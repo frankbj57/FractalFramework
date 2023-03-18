@@ -68,11 +68,6 @@
 #define OLC_PGE_APPLICATION
 #include "olcPixelGameEngine.h"
 
-#include <condition_variable>
-#include <atomic>
-#include <complex>
-#include <cstdlib>
-#include <immintrin.h>
 #include <ppl.h>
 
 #include "CircularBufferTemplate.h"
