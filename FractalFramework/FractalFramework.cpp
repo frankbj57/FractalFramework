@@ -71,6 +71,7 @@
 #include <ppl.h>
 
 #include "CircularBufferTemplate.h"
+#include "ErikssonColorizer.h"
 
 constexpr int nMaxThreads = 32;
 
@@ -94,6 +95,8 @@ public:
 		// Using Vector extensions, align memory (not as necessary as it used to be)
 		// MS Specific - see std::aligned_alloc for others
 		pFractal = (int*)_aligned_malloc(size_t(ScreenWidth()) * size_t(ScreenHeight()) * sizeof(int), 64);
+
+		colorizer.scale = nIterations;
 
 		return true;
 	}
@@ -268,9 +271,23 @@ public:
 		if (GetKey(olc::K1).bPressed) nMode = 0;
 		if (GetKey(olc::K2).bPressed) nMode = 1;
 
-		if (GetKey(olc::UP).bPressed) nIterations += 64;
-		if (GetKey(olc::DOWN).bPressed) nIterations -= 64;
-		if (nIterations < 64) nIterations = 64;
+		if (GetKey(olc::UP).bPressed)
+		{
+			nIterations += 64;
+			colorizer.scale = nIterations;
+		}
+		if (GetKey(olc::DOWN).bPressed)
+		{
+			nIterations -= 64;
+			colorizer.scale = nIterations;
+		}
+
+		if (nIterations < 64)
+		{
+			nIterations = 64;
+			colorizer.scale = nIterations;
+		}
+
 
 
 		// START TIMING
@@ -297,10 +314,8 @@ public:
 				}
 				else
 				{
-					float n = (float)i;
-					float a = 0.1f;
-					// Thank you @Eriksonn - Wonderful Magic Fractal Oddball Man
-					Draw(x, y, olc::PixelF(0.5f * sin(a * n) + 0.5f, 0.5f * sin(a * n + 2.094f) + 0.5f, 0.5f * sin(a * n + 4.188f) + 0.5f));
+					Draw(x, y, 
+						colorizer.ColorizePixel(i));
 				}
 			}
 		}
@@ -319,6 +334,7 @@ public:
 	olc::vd2d vStartPan = { 0.0, 0.0 };
 	olc::vd2d vScale = { 1280.0 / 2.0, 720.0 };
 	
+	ErikssonColorizer colorizer;
 
 	// Convert coordinates from World Space --> Screen Space
 	void WorldToScreen(const olc::vd2d& v, olc::vi2d &n)
