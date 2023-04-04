@@ -141,6 +141,7 @@
   <ItemGroup>
     <ClInclude Include="ErikssonColorizer.h" />
     <ClInclude Include="IColorizer.h" />
+    <ClInclude Include="olcPGEX_TransformedView.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

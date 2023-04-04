@@ -68,6 +68,9 @@
 #define OLC_PGE_APPLICATION
 #include "olcPixelGameEngine.h"
 
+#define OLC_PGEX_TRANSFORMEDVIEW
+#include "olcPGEX_TransformedView.h"
+
 #include <ppl.h>
 
 #include "CircularBufferTemplate.h"
@@ -97,6 +100,15 @@ public:
 		pFractal = (int*)_aligned_malloc(size_t(ScreenWidth()) * size_t(ScreenHeight()) * sizeof(int), 64);
 
 		colorizer.scale = nIterations;
+
+		// Original viewport should be x: 0 to 2, y: 0 to 1. Screencoordinates y are opposite
+		float xscale = ScreenWidth() / (2.0 - 1.0);
+		float yscale = ScreenHeight() / (1.0);
+		float scale = std::min(xscale, yscale);
+
+		tv.Initialise(
+			{ ScreenWidth(), ScreenHeight() },
+			{ scale, -scale});
 
 		return true;
 	}
@@ -233,39 +245,16 @@ public:
 
 	bool OnUserUpdate(float fElapsedTime) override
 	{
+		// Handle transform control
+		tv.HandlePanAndZoom();
 
-		// Get mouse location this frame
-		olc::vd2d vMouse = { (double)GetMouseX(), (double)GetMouseY() };
-
-		// Handle Pan & Zoom
-		if (GetMouse(2).bPressed)
-		{
-			vStartPan = vMouse;
-		}
-
-		if (GetMouse(2).bHeld)
-		{
-			vOffset -= (vMouse - vStartPan) / vScale;
-			vStartPan = vMouse;
-		}
-
-		olc::vd2d vMouseBeforeZoom;
-		ScreenToWorld(vMouse, vMouseBeforeZoom);
-
-		if (GetKey(olc::Key::Q).bHeld || GetMouseWheel() > 0) vScale *= 1.1;
-		if (GetKey(olc::Key::A).bHeld || GetMouseWheel() < 0) vScale *= 0.9;
-		
-		olc::vd2d vMouseAfterZoom;
-		ScreenToWorld(vMouse, vMouseAfterZoom);
-		vOffset += (vMouseBeforeZoom - vMouseAfterZoom);
-		
 		olc::vi2d pix_tl = { 0,0 };
 		olc::vi2d pix_br = { ScreenWidth(), ScreenHeight() };
 		olc::vd2d frac_tl = { -2.0, -1.0 };
 		olc::vd2d frac_br = { 1.0, 1.0 };
 
-		ScreenToWorld(pix_tl, frac_tl);
-		ScreenToWorld(pix_br, frac_br);
+		frac_tl = tv.ScreenToWorld(pix_tl);
+		frac_br = tv.ScreenToWorld(pix_br);
 
 		// Handle User Input
 		if (GetKey(olc::K1).bPressed) nMode = 0;
@@ -329,26 +318,10 @@ public:
 		return !(GetKey(olc::Key::ESCAPE).bPressed);
 	}
 
-	// Pan & Zoom variables
-	olc::vd2d vOffset = { 0.0, 0.0 };
-	olc::vd2d vStartPan = { 0.0, 0.0 };
-	olc::vd2d vScale = { 1280.0 / 2.0, 720.0 };
-	
+
+	olc::TransformedView tv;
+
 	ErikssonColorizer colorizer;
-
-	// Convert coordinates from World Space --> Screen Space
-	void WorldToScreen(const olc::vd2d& v, olc::vi2d &n)
-	{
-		n.x = (int)((v.x - vOffset.x) * vScale.x);
-		n.y = (int)((v.y - vOffset.y) * vScale.y);
-	}
-
-	// Convert coordinates from Screen Space --> World Space
-	void ScreenToWorld(const olc::vi2d& n, olc::vd2d& v)
-	{
-		v.x = (double)(n.x) / vScale.x + vOffset.x;
-		v.y = (double)(n.y) / vScale.y + vOffset.y;
-	}
 };
 
 const FractalFramework::method_s FractalFramework::Methods[]
@@ -368,7 +341,7 @@ const FractalFramework::method_s FractalFramework::Methods[]
 int main()
 {
 	FractalFramework demo;
-	if (demo.Construct(1280, 720, 1, 1, false, false))
+	if (demo.Construct(1024, 1024, 1, 1, false, false))
 		demo.Start();
 	return 0;
 }
