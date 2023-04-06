@@ -120,6 +120,22 @@ public:
 		return true;
 	}
 
+	struct ComputeState
+	{
+		double cr, ci;
+		double zr, zi;
+		double zr2, zi2;
+
+		void Advance()
+		{
+			zi = zr * zi * 2.0 + ci;
+			zr = zr2 - zi2 + cr;
+
+			zr2 = zr * zr;
+			zi2 = zi * zi;
+		}
+	};
+
 	// New parallel method, using OpenMP
 	void CreateFractalOpenMP(const olc::vi2d& pix_tl, const olc::vi2d& pix_br, const olc::vd2d& frac_tl, const olc::vd2d& frac_br, const int iterations)
 	{
@@ -142,36 +158,31 @@ public:
 
 			int x, n;
 
-			double cr;
-			double ci;
-			double zr;
-			double zi;
-			double re = 0;
-			double im = 0;
-			double zr2;
-			double zi2;
-
-			ci = y_pos;
-
 			for (x = pix_tl.x; x < pix_br.x; x++)
 			{
-				cr = x_pos;
-				zr = 0;
-				zi = 0;
-				zr2 = 0;
-				zi2 = 0;
+				ComputeState z;
+				z.ci = y_pos;
+				z.cr = x_pos;
+				z.zr = 0;
+				z.zi = 0;
+				z.zr2 = 0;
+				z.zi2 = 0;
+
+				ComputeState ztail = z;
 
 				n = 0;
-				while ((zr2 + zi2) < 4.0 && n < iterations)
+				bool loops = false;
+				while ((z.zr2 + z.zi2) < 4.0 && n < iterations && !loops)
 				{
-					re = zr2 - zi2 + cr;
-					im = zr * zi * 2.0 + ci;
-					zr = re;
-					zi = im;
-					zr2 = zr * zr;
-					zi2 = zi * zi;
+					z.Advance();
+					loops = z.zr == ztail.zr && z.zi == ztail.zi;
+					if (n & 0x1)
+						ztail.Advance();
 					n++;
 				}
+
+				if (loops)
+					n = iterations;
 
 				pFractal[y_offset + x] = n;
 				x_pos += x_scale;
@@ -196,37 +207,48 @@ public:
 
 				int x, n;
 
-				double cr = 0;
-				double ci = 0;
-				double zr = 0;
-				double zi = 0;
-				double re = 0;
-				double im = 0;
-				double zr2 = 0;
-				double zi2 = 0;
-
-				ci = y_pos;
 				for (x = pix_tl.x; x < pix_br.x; x++)
 				{
-					cr = x_pos;
-					zr = 0;
-					zi = 0;
-					zr2 = 0;
-					zi2 = 0;
+					ComputeState z;
+					z.ci = y_pos;
+					z.cr = x_pos;
+					z.zr = 0;
+					z.zi = 0;
+					z.zr2 = 0;
+					z.zi2 = 0;
+
+					ComputeState ztail = z;
 
 					n = 0;
-					while ((zr2 + zi2) < 4.0 && n < iterations)
+					bool loops = false;
+					while ((z.zr2 + z.zi2) < 4.0 && n < iterations && !loops)
 					{
-						re = zr2 - zi2 + cr;
-						im = zr * zi * 2.0 + ci;
-						zr = re;
-						zi = im;
-						zr2 = zr * zr;
-						zi2 = zi * zi;
+						z.Advance();
+						loops = z.zr == ztail.zr && z.zi == ztail.zi;
+						if (n & 0x1)
+							ztail.Advance();
 						n++;
 					}
 
-					pFractal[y_offset + x] = n;
+					if (loops)
+					{
+						// We are looping, calculate loop length
+						ztail = z;
+						z.Advance();
+						int loop = 1;
+						while (z.zr != ztail.zr || z.zi != ztail.zi)
+						{
+							z.Advance();
+							loop++;
+						}
+						pFractal[y_offset + x] = loop;
+					}
+					else if (n >= iterations)
+						pFractal[y_offset + x] = iterations/2;
+					else
+						pFractal[y_offset + x] = iterations;
+
+					// pFractal[y_offset + x] = n;
 					x_pos += x_scale;
 				}
 			});
@@ -242,6 +264,8 @@ public:
 	};
 
 	static const method_s Methods[];
+
+	vector<olc::vf2d> track;
 
 	bool OnUserUpdate(float fElapsedTime) override
 	{
@@ -277,7 +301,32 @@ public:
 			colorizer.scale = nIterations;
 		}
 
+		if (GetMouse(0).bPressed || GetMouse(0).bHeld)
+		{
+			track.clear();
+			olc::vf2d pos = GetMousePos();
+			pos = tv.ScreenToWorld(pos);
+			ComputeState z;
+			z.cr = pos.x;
+			z.ci = pos.y;
+			z.zr = 0;
+			z.zi = 0;
+			z.zr2 = 0;
+			z.zi2 = 0;
 
+			z.Advance();
+			int i = 1;
+			while ((z.zr2 + z.zi2) < 4.0 && i < nIterations)
+			{
+				track.push_back({ (float)z.zr, (float)z.zi });
+				z.Advance();
+				i++;
+			}
+		}
+		else if (GetMouse(0).bReleased)
+		{
+			track.clear();
+		}
 
 		// START TIMING
 		auto tp1 = std::chrono::high_resolution_clock::now();
@@ -307,6 +356,12 @@ public:
 						colorizer.ColorizePixel(i));
 				}
 			}
+		}
+
+		if (track.size() > 1)
+		{
+			for (int i = 0; i < track.size() - 1; i++)
+				tv.DrawLine(track[i], track[i + 1]);
 		}
 
 		// Render UI
