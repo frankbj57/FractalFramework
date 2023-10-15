@@ -89,6 +89,7 @@ public:
 	int* pFractal = nullptr;
 	int nMode = 1;
 	int nIterations = 256;
+	bool loopCheck = false;
 
 public:
 	bool OnUserCreate() override
@@ -168,21 +169,32 @@ public:
 				z.zr2 = 0;
 				z.zi2 = 0;
 
-				ComputeState ztail = z;
 
 				n = 0;
-				bool loops = false;
-				while ((z.zr2 + z.zi2) < 4.0 && n < iterations && !loops)
+				if (loopCheck)
 				{
-					z.Advance();
-					loops = z.zr == ztail.zr && z.zi == ztail.zi;
-					if (n & 0x1)
-						ztail.Advance();
-					n++;
-				}
+					ComputeState ztail = z;
+					bool loops = false;
+					while ((z.zr2 + z.zi2) < 4.0 && n < iterations && !loops)
+					{
+						z.Advance();
+						loops = z.zr == ztail.zr && z.zi == ztail.zi;
+						if (n & 0x1)
+							ztail.Advance();
+						n++;
+					}
 
-				if (loops)
-					n = iterations;
+					if (loops)
+						n = iterations;
+				}
+				else
+				{
+					while ((z.zr2 + z.zi2) < 4.0 && n < iterations)
+					{
+						z.Advance();
+						n++;
+					}
+				}
 
 				pFractal[y_offset + x] = n;
 				x_pos += x_scale;
@@ -241,12 +253,12 @@ public:
 							z.Advance();
 							loop++;
 						}
-						pFractal[y_offset + x] = loop;
+						pFractal[y_offset + x] = loop*10;
 					}
 					else if (n >= iterations)
-						pFractal[y_offset + x] = iterations/2;
-					else
 						pFractal[y_offset + x] = iterations;
+					else
+						pFractal[y_offset + x] = n;
 
 					// pFractal[y_offset + x] = n;
 					x_pos += x_scale;
@@ -266,6 +278,7 @@ public:
 	static const method_s Methods[];
 
 	vector<olc::vf2d> track;
+	olc::vf2d prevMousPos;
 
 	bool OnUserUpdate(float fElapsedTime) override
 	{
@@ -301,10 +314,13 @@ public:
 			colorizer.scale = nIterations;
 		}
 
-		if (GetMouse(0).bPressed || GetMouse(0).bHeld)
+
+		olc::vf2d pos = GetMousePos();
+		if (GetMouse(0).bPressed || (GetMouse(0).bHeld && pos != prevMousPos))
 		{
+			// Calculate orbit for the selected point at the mouse
+			prevMousPos = pos;
 			track.clear();
-			olc::vf2d pos = GetMousePos();
 			pos = tv.ScreenToWorld(pos);
 			ComputeState z;
 			z.cr = pos.x;
@@ -314,12 +330,17 @@ public:
 			z.zr2 = 0;
 			z.zi2 = 0;
 
-			z.Advance();
+			ComputeState ztail = z;
+
 			int i = 1;
-			while ((z.zr2 + z.zi2) < 4.0 && i < nIterations)
+			bool loops = false;
+			while ((z.zr2 + z.zi2) < 4.0 && i < nIterations && !loops)
 			{
 				track.push_back({ (float)z.zr, (float)z.zi });
 				z.Advance();
+				loops = z.zr == ztail.zr && z.zi == ztail.zi;
+				if (i & 0x1)
+					ztail.Advance();
 				i++;
 			}
 		}
@@ -361,6 +382,7 @@ public:
 		if (track.size() > 1)
 		{
 			for (int i = 0; i < track.size() - 1; i++)
+				// Warning - it takes a long time to draw a line which is outside the window!
 				tv.DrawLine(track[i], track[i + 1]);
 		}
 
@@ -370,6 +392,7 @@ public:
 		// DrawString(0, 30, "Time Taken: " + std::to_string(elapsedTime.count()) + "s", olc::WHITE, 3);
 		DrawString(0, 30, "Time Taken: " + std::to_string(elapseBuffer.meanValue().count()) + "s", olc::WHITE, 3);
 		DrawString(0, 60, "Iterations: " + std::to_string(nIterations), olc::WHITE, 3);
+		DrawString(0, 90, "Track length: " + std::to_string(track.size()), olc::WHITE, 3);
 		return !(GetKey(olc::Key::ESCAPE).bPressed);
 	}
 
