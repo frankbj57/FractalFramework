@@ -78,6 +78,15 @@
 
 constexpr int nMaxThreads = 32;
 
+struct IComputeState
+{
+	double cr, ci;
+	double zr, zi;
+	double zr2, zi2;
+
+	virtual void Advance() = 0;
+};
+
 class FractalFramework : public olc::PixelGameEngine
 {
 public:
@@ -121,12 +130,8 @@ public:
 		return true;
 	}
 
-	struct ComputeState
+	struct MandelComputeState : public IComputeState
 	{
-		double cr, ci;
-		double zr, zi;
-		double zr2, zi2;
-
 		void Advance()
 		{
 			zi = zr * zi * 2.0 + ci;
@@ -134,6 +139,79 @@ public:
 
 			zr2 = zr * zr;
 			zi2 = zi * zi;
+		}
+	};
+
+	struct MandelComputePoint
+	{
+		MandelComputeState z;
+		int maxIterations;
+
+		inline int ComputePointCount(double x, double y)
+		{
+			int n = 0;
+			z.ci = y;
+			z.cr = x;
+			z.zr = 0;
+			z.zi = 0;
+			z.zr2 = 0;
+			z.zi2 = 0;
+
+			while ((z.zr2 + z.zi2) < 4.0 && n < maxIterations)
+			{
+				z.Advance();
+				n++;
+			}
+
+			return n;
+		}
+	};
+
+	struct MandelComputePointWithLoop
+	{
+		MandelComputeState z;
+		int maxIterations;
+
+		inline int ComputePointCount(double x, double y)
+		{
+			z.ci = y;
+			z.cr = x;
+			z.zr = 0;
+			z.zi = 0;
+			z.zr2 = 0;
+			z.zi2 = 0;
+
+			MandelComputeState ztail = z;
+
+			int n = 0;
+			bool loops = false;
+			while ((z.zr2 + z.zi2) < 4.0 && n < maxIterations && !loops)
+			{
+				z.Advance();
+				loops = z.zr == ztail.zr && z.zi == ztail.zi;
+				if (n & 0x1)
+					ztail.Advance();
+				n++;
+			}
+
+			if (loops)
+			{
+				// We are looping, calculate loop length
+				ztail = z;
+				z.Advance();
+				int loop = 1;
+				while (z.zr != ztail.zr || z.zi != ztail.zi)
+				{
+					z.Advance();
+					loop++;
+				}
+				return loop;
+			}
+			else if (n >= maxIterations)
+				return maxIterations;
+			else
+				return n;
+
 		}
 	};
 
@@ -149,7 +227,7 @@ public:
 
 
 #pragma omp parallel
-		#pragma omp for schedule(dynamic, 1)
+#pragma omp for schedule(dynamic, 1) nowait
 		for (y = pix_tl.y; y < pix_br.y; y++)
 		{
 			double x_pos = frac_tl.x;
@@ -159,41 +237,21 @@ public:
 
 			int x, n;
 
+			MandelComputePoint comPoint;
+			comPoint.maxIterations = iterations;
+
+			MandelComputePointWithLoop comPointWithLoop;
+			comPointWithLoop.maxIterations = iterations;
+
 			for (x = pix_tl.x; x < pix_br.x; x++)
 			{
-				ComputeState z;
-				z.ci = y_pos;
-				z.cr = x_pos;
-				z.zr = 0;
-				z.zi = 0;
-				z.zr2 = 0;
-				z.zi2 = 0;
-
-
-				n = 0;
 				if (loopCheck)
 				{
-					ComputeState ztail = z;
-					bool loops = false;
-					while ((z.zr2 + z.zi2) < 4.0 && n < iterations && !loops)
-					{
-						z.Advance();
-						loops = z.zr == ztail.zr && z.zi == ztail.zi;
-						if (n & 0x1)
-							ztail.Advance();
-						n++;
-					}
-
-					if (loops)
-						n = iterations;
+					n = comPointWithLoop.ComputePointCount(x_pos, y_pos);
 				}
 				else
 				{
-					while ((z.zr2 + z.zi2) < 4.0 && n < iterations)
-					{
-						z.Advance();
-						n++;
-					}
+					n = comPoint.ComputePointCount(x_pos, y_pos);
 				}
 
 				pFractal[y_offset + x] = n;
@@ -219,48 +277,24 @@ public:
 
 				int x, n;
 
+				MandelComputePoint comPoint;
+				comPoint.maxIterations = iterations;
+
+				MandelComputePointWithLoop comPointWithLoop;
+				comPointWithLoop.maxIterations = iterations;
+
 				for (x = pix_tl.x; x < pix_br.x; x++)
 				{
-					ComputeState z;
-					z.ci = y_pos;
-					z.cr = x_pos;
-					z.zr = 0;
-					z.zi = 0;
-					z.zr2 = 0;
-					z.zi2 = 0;
-
-					ComputeState ztail = z;
-
-					n = 0;
-					bool loops = false;
-					while ((z.zr2 + z.zi2) < 4.0 && n < iterations && !loops)
+					if (loopCheck)
 					{
-						z.Advance();
-						loops = z.zr == ztail.zr && z.zi == ztail.zi;
-						if (n & 0x1)
-							ztail.Advance();
-						n++;
+						n = comPointWithLoop.ComputePointCount(x_pos, y_pos);
 					}
-
-					if (loops)
-					{
-						// We are looping, calculate loop length
-						ztail = z;
-						z.Advance();
-						int loop = 1;
-						while (z.zr != ztail.zr || z.zi != ztail.zi)
-						{
-							z.Advance();
-							loop++;
-						}
-						pFractal[y_offset + x] = loop*10;
-					}
-					else if (n >= iterations)
-						pFractal[y_offset + x] = iterations;
 					else
-						pFractal[y_offset + x] = n;
+					{
+						n = comPoint.ComputePointCount(x_pos, y_pos);
+					}
 
-					// pFractal[y_offset + x] = n;
+					pFractal[y_offset + x] = n;
 					x_pos += x_scale;
 				}
 			});
@@ -314,6 +348,12 @@ public:
 			colorizer.scale = nIterations;
 		}
 
+		if (GetKey(olc::L).bPressed)
+		{
+			// Toggle loopcheck
+			loopCheck = !loopCheck;
+		}
+
 
 		olc::vf2d pos = GetMousePos();
 		if (GetMouse(0).bPressed || (GetMouse(0).bHeld && pos != prevMousPos))
@@ -322,7 +362,7 @@ public:
 			prevMousPos = pos;
 			track.clear();
 			pos = tv.ScreenToWorld(pos);
-			ComputeState z;
+			MandelComputeState z;
 			z.cr = pos.x;
 			z.ci = pos.y;
 			z.zr = 0;
@@ -330,7 +370,7 @@ public:
 			z.zr2 = 0;
 			z.zi2 = 0;
 
-			ComputeState ztail = z;
+			MandelComputeState ztail = z;
 
 			int i = 1;
 			bool loops = false;
@@ -382,8 +422,20 @@ public:
 		if (track.size() > 1)
 		{
 			for (int i = 0; i < track.size() - 1; i++)
+			{
 				// Warning - it takes a long time to draw a line which is outside the window!
-				tv.DrawLine(track[i], track[i + 1]);
+				olc::vf2d screen1 = tv.WorldToScreen(track[i]);
+				olc::vf2d screen2 = tv.WorldToScreen(track[i + 1]);
+				// If both points are outside screen, don't draw the line
+				if ((screen1.x < 0 || screen1.x >= ScreenWidth() || screen1.y < 0 || screen1.y > ScreenHeight())
+					&&
+					(screen2.x < 0 || screen2.x >= ScreenWidth() || screen2.y < 0 || screen2.y > ScreenHeight()))
+				{
+					// Don't do anything
+				}
+				else
+					DrawLine(screen1, screen2);
+			}
 		}
 
 		// Render UI
