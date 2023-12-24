@@ -12,3 +12,14 @@ public:
 
 private:
 };
+
+class IColorizerDecorator : public IColorizer
+{
+public:
+	IColorizerDecorator(IColorizer* pCore) : pCore(pCore) {}
+	olc::Pixel ColorizePixel(int value) override { return pCore->ColorizePixel(value); }
+	olc::Pixel ColorizePixel(float value) override { return pCore->ColorizePixel(value); }
+
+protected:
+	IColorizer* pCore;
+};

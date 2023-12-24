@@ -75,6 +75,7 @@
 
 #include "CircularBufferTemplate.h"
 #include "ErikssonColorizer.h"
+#include "StripedColorizer.h"
 
 constexpr int nMaxThreads = 32;
 
@@ -85,6 +86,17 @@ struct IComputeState
 	double zr2, zi2;
 
 	virtual void Advance() = 0;
+	virtual IComputeState* Clone() = 0;
+};
+
+struct IComputePoint
+{
+	IComputeState* z;
+	int maxIterations;
+
+	virtual int ComputePointCount(double x, double y) = 0;
+	virtual IComputePoint* Clone() = 0;
+	virtual ~IComputePoint() {}
 };
 
 class FractalFramework : public olc::PixelGameEngine
@@ -98,7 +110,6 @@ public:
 	int* pFractal = nullptr;
 	int nMode = 1;
 	int nIterations = 256;
-	bool loopCheck = false;
 
 public:
 	bool OnUserCreate() override
@@ -120,6 +131,14 @@ public:
 			{ ScreenWidth(), ScreenHeight() },
 			{ scale, -scale});
 
+		m_MandelComputePoint.z = new MandelComputeState;
+		m_MandelComputePoint.maxIterations = nIterations;
+
+		m_MandelComputePointWithLoop.z = new MandelComputeState;
+		m_MandelComputePointWithLoop.maxIterations = nIterations;
+
+		m_pCurrentPointAlgorithm = &m_MandelComputePoint;
+		loopCheck = false;
 		return true;
 	}
 
@@ -132,7 +151,7 @@ public:
 
 	struct MandelComputeState : public IComputeState
 	{
-		void Advance()
+		inline void Advance() override
 		{
 			zi = zr * zi * 2.0 + ci;
 			zr = zr2 - zi2 + cr;
@@ -140,80 +159,123 @@ public:
 			zr2 = zr * zr;
 			zi2 = zi * zi;
 		}
+
+		inline IComputeState* Clone() override
+		{
+			MandelComputeState* pR = new MandelComputeState(*this);
+
+			return pR;
+		}
 	};
 
-	struct MandelComputePoint
+	struct MandelComputePoint : public IComputePoint
 	{
-		MandelComputeState z;
-		int maxIterations;
-
-		inline int ComputePointCount(double x, double y)
+		inline int ComputePointCount(double x, double y) override
 		{
 			int n = 0;
-			z.ci = y;
-			z.cr = x;
-			z.zr = 0;
-			z.zi = 0;
-			z.zr2 = 0;
-			z.zi2 = 0;
+			z->ci = y;
+			z->cr = x;
+			z->zr = 0;
+			z->zi = 0;
+			z->zr2 = 0;
+			z->zi2 = 0;
 
-			while ((z.zr2 + z.zi2) < 4.0 && n < maxIterations)
+			while ((z->zr2 + z->zi2) < 4.0 && n < maxIterations)
 			{
-				z.Advance();
+				z->Advance();
 				n++;
 			}
 
 			return n;
 		}
+
+		inline IComputePoint* Clone() override
+		{
+			MandelComputePoint* pR = new MandelComputePoint;
+			pR->z = z->Clone();
+			pR->maxIterations = maxIterations;
+
+			return pR;
+		}
+
+		~MandelComputePoint() override
+		{
+			delete z;
+		}
 	};
 
-	struct MandelComputePointWithLoop
+	struct MandelComputePointWithLoop : public IComputePoint
 	{
-		MandelComputeState z;
-		int maxIterations;
-
 		inline int ComputePointCount(double x, double y)
 		{
-			z.ci = y;
-			z.cr = x;
-			z.zr = 0;
-			z.zi = 0;
-			z.zr2 = 0;
-			z.zi2 = 0;
+			z->ci = y;
+			z->cr = x;
+			z->zr = 0;
+			z->zi = 0;
+			z->zr2 = 0;
+			z->zi2 = 0;
 
-			MandelComputeState ztail = z;
+			IComputeState *ztail = z->Clone();
 
 			int n = 0;
 			bool loops = false;
-			while ((z.zr2 + z.zi2) < 4.0 && n < maxIterations && !loops)
+			while ((z->zr2 + z->zi2) < 4.0 && n < maxIterations && !loops)
 			{
-				z.Advance();
-				loops = z.zr == ztail.zr && z.zi == ztail.zi;
+				z->Advance();
+				loops = z->zr == ztail->zr && z->zi == ztail->zi;
 				if (n & 0x1)
-					ztail.Advance();
+					ztail->Advance();
 				n++;
 			}
 
 			if (loops)
 			{
 				// We are looping, calculate loop length
-				ztail = z;
-				z.Advance();
+				*ztail = *z;
+				z->Advance();
 				int loop = 1;
-				while (z.zr != ztail.zr || z.zi != ztail.zi)
+				while (z->zr != ztail->zr || z->zi != ztail->zi)
 				{
-					z.Advance();
+					z->Advance();
 					loop++;
 				}
+				delete ztail;
 				return loop;
 			}
 			else if (n >= maxIterations)
+			{
+				delete ztail;
 				return maxIterations;
+			}
 			else
+			{
+				delete ztail;
 				return n;
+			}
 
+			delete ztail;
+		}
+
+		inline IComputePoint* Clone() override
+		{
+			MandelComputePointWithLoop* pR = new MandelComputePointWithLoop;
+			pR->z = z->Clone();
+			pR->maxIterations = maxIterations;
+
+			return pR;
+		}
+
+		~MandelComputePointWithLoop() override
+		{
+			delete z;
 		}
 	};
+
+
+	IComputePoint* m_pCurrentPointAlgorithm;
+	MandelComputePoint m_MandelComputePoint;
+	MandelComputePointWithLoop m_MandelComputePointWithLoop;
+	bool loopCheck;
 
 	// New parallel method, using OpenMP
 	void CreateFractalOpenMP(const olc::vi2d& pix_tl, const olc::vi2d& pix_br, const olc::vd2d& frac_tl, const olc::vd2d& frac_br, const int iterations)
@@ -237,26 +299,17 @@ public:
 
 			int x, n;
 
-			MandelComputePoint comPoint;
-			comPoint.maxIterations = iterations;
-
-			MandelComputePointWithLoop comPointWithLoop;
-			comPointWithLoop.maxIterations = iterations;
+			IComputePoint *comPoint = m_pCurrentPointAlgorithm->Clone();
 
 			for (x = pix_tl.x; x < pix_br.x; x++)
 			{
-				if (loopCheck)
-				{
-					n = comPointWithLoop.ComputePointCount(x_pos, y_pos);
-				}
-				else
-				{
-					n = comPoint.ComputePointCount(x_pos, y_pos);
-				}
+				n = comPoint->ComputePointCount(x_pos, y_pos);
 
 				pFractal[y_offset + x] = n;
 				x_pos += x_scale;
 			}
+
+			delete comPoint;
 		}
 	}
 
@@ -277,26 +330,17 @@ public:
 
 				int x, n;
 
-				MandelComputePoint comPoint;
-				comPoint.maxIterations = iterations;
-
-				MandelComputePointWithLoop comPointWithLoop;
-				comPointWithLoop.maxIterations = iterations;
+				IComputePoint* comPoint = m_pCurrentPointAlgorithm->Clone();
 
 				for (x = pix_tl.x; x < pix_br.x; x++)
 				{
-					if (loopCheck)
-					{
-						n = comPointWithLoop.ComputePointCount(x_pos, y_pos);
-					}
-					else
-					{
-						n = comPoint.ComputePointCount(x_pos, y_pos);
-					}
+					n = comPoint->ComputePointCount(x_pos, y_pos);
 
 					pFractal[y_offset + x] = n;
 					x_pos += x_scale;
 				}
+
+				delete comPoint;
 			});
 	}
 
@@ -313,6 +357,7 @@ public:
 
 	vector<olc::vf2d> track;
 	olc::vf2d prevMousPos;
+	int loopLength = 0;
 
 	bool OnUserUpdate(float fElapsedTime) override
 	{
@@ -352,6 +397,10 @@ public:
 		{
 			// Toggle loopcheck
 			loopCheck = !loopCheck;
+			if (loopCheck)
+				m_pCurrentPointAlgorithm = &m_MandelComputePointWithLoop;
+			else
+				m_pCurrentPointAlgorithm = &m_MandelComputePoint;
 		}
 
 
@@ -371,7 +420,7 @@ public:
 			z.zi2 = 0;
 
 			MandelComputeState ztail = z;
-
+			z.Advance();
 			int i = 1;
 			bool loops = false;
 			while ((z.zr2 + z.zi2) < 4.0 && i < nIterations && !loops)
@@ -383,11 +432,27 @@ public:
 					ztail.Advance();
 				i++;
 			}
+			loopLength = 0;
+			if (loops)
+			{
+				// Keep z fixed
+				ztail = z;
+				ztail.Advance();
+				loopLength = 1;
+				while (z.zr != ztail.zr && z.zi != ztail.zi)
+				{
+					loopLength++;
+					ztail.Advance();
+				}
+			}
 		}
 		else if (GetMouse(0).bReleased)
 		{
 			track.clear();
+			loopLength = 0;
 		}
+
+		m_pCurrentPointAlgorithm->maxIterations = nIterations;
 
 		// START TIMING
 		auto tp1 = std::chrono::high_resolution_clock::now();
@@ -443,8 +508,9 @@ public:
 
 		// DrawString(0, 30, "Time Taken: " + std::to_string(elapsedTime.count()) + "s", olc::WHITE, 3);
 		DrawString(0, 30, "Time Taken: " + std::to_string(elapseBuffer.meanValue().count()) + "s", olc::WHITE, 3);
-		DrawString(0, 60, "Iterations: " + std::to_string(nIterations), olc::WHITE, 3);
+		DrawString(0, 60, "Iterations: " + std::to_string(m_pCurrentPointAlgorithm->maxIterations), olc::WHITE, 3);
 		DrawString(0, 90, "Track length: " + std::to_string(track.size()), olc::WHITE, 3);
+		DrawString(0, 120, "Loop length: " + std::to_string(loopLength), olc::WHITE, 3);
 		return !(GetKey(olc::Key::ESCAPE).bPressed);
 	}
 
