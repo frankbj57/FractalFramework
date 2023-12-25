@@ -432,38 +432,38 @@ public:
 			prevMousPos = pos;
 			track.clear();
 			pos = tv.ScreenToWorld(pos);
-			MandelComputeState z;
-			z.cr = pos.x;
-			z.ci = pos.y;
-			z.zr = 0;
-			z.zi = 0;
-			z.zr2 = 0;
-			z.zi2 = 0;
+			IComputeState *pz = m_pCurrentStateAlgorithm->Clone();
+			pz->cr = pos.x;
+			pz->ci = pos.y;
+			pz->zr = 0;
+			pz->zi = 0;
+			pz->zr2 = 0;
+			pz->zi2 = 0;
 
-			MandelComputeState ztail = z;
-			z.Advance();
+			IComputeState* pztail = pz->Clone();
+			pz->Advance();
 			int i = 1;
 			bool loops = false;
-			while ((z.zr2 + z.zi2) < 4.0 && i < nIterations && !loops)
+			while ((pz->zr2 + pz->zi2) < 4.0 && i < nIterations && !loops)
 			{
-				track.push_back({ (float)z.zr, (float)z.zi });
-				z.Advance();
-				loops = z.zr == ztail.zr && z.zi == ztail.zi;
+				track.push_back({ (float)pz->zr, (float)pz->zi });
+				pz->Advance();
+				loops = pz->zr == pztail->zr && pz->zi == pztail->zi;
 				if (i & 0x1)
-					ztail.Advance();
+					pztail->Advance();
 				i++;
 			}
 			loopLength = 0;
 			if (loops)
 			{
 				// Keep z fixed
-				ztail = z;
-				ztail.Advance();
+				*pztail = *pz;
+				pztail->Advance();
 				loopLength = 1;
-				while (z.zr != ztail.zr && z.zi != ztail.zi)
+				while (pz->zr != pztail->zr && pz->zi != pztail->zi)
 				{
 					loopLength++;
-					ztail.Advance();
+					pztail->Advance();
 				}
 			}
 		}
