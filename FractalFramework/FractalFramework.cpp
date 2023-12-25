@@ -102,7 +102,7 @@ struct IComputePoint
 class FractalFramework : public olc::PixelGameEngine
 {
 public:
-	FractalFramework() : effectiveColorizer(&colorizer)
+	FractalFramework() : stripedColorizer(&colorizer)
 	{
 		sAppName = "Fractal Framework";
 	}
@@ -110,6 +110,7 @@ public:
 	int* pFractal = nullptr;
 	int nMode = 1;
 	int nIterations = 256;
+	bool striped = false;
 
 public:
 	bool OnUserCreate() override
@@ -121,6 +122,8 @@ public:
 		pFractal = (int*)_aligned_malloc(size_t(ScreenWidth()) * size_t(ScreenHeight()) * sizeof(int), 64);
 
 		colorizer.scale = nIterations;
+
+		effectiveColorizer = &colorizer;
 
 		// Original viewport should be x: 0 to 2, y: 0 to 1. Screencoordinates y are opposite
 		float xscale = ScreenWidth() / (2.0 - 1.0);
@@ -424,6 +427,16 @@ public:
 				m_pCurrentPointAlgorithm = &m_MandelComputePoint;
 		}
 
+		if (GetKey(olc::S).bPressed)
+		{
+			// Toggle striped
+			striped = !striped;
+			if (striped)
+				effectiveColorizer = &stripedColorizer;
+			else
+				effectiveColorizer = &colorizer;
+		}
+
 
 		olc::vf2d pos = GetMousePos();
 		if (GetMouse(0).bPressed || (GetMouse(0).bHeld && pos != prevMousPos))
@@ -466,6 +479,8 @@ public:
 					pztail->Advance();
 				}
 			}
+			delete pz;
+			delete pztail;
 		}
 		else if (GetMouse(0).bReleased)
 		{
@@ -500,7 +515,7 @@ public:
 				else
 				{
 					Draw(x, y, 
-						colorizer.ColorizePixel(i));
+						effectiveColorizer->ColorizePixel(i));
 				}
 			}
 		}
@@ -538,8 +553,9 @@ public:
 
 	olc::TransformedView tv;
 
+	IColorizer* effectiveColorizer;
 	ErikssonColorizer colorizer;
-	StripedColorizer effectiveColorizer;
+	StripedColorizer stripedColorizer;
 };
 
 const FractalFramework::method_s FractalFramework::Methods[]
