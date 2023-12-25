@@ -91,7 +91,7 @@ struct IComputeState
 
 struct IComputePoint
 {
-	IComputeState* z;
+	std::unique_ptr<IComputeState> z;
 	int maxIterations;
 
 	virtual int ComputePointCount(double x, double y) = 0;
@@ -136,10 +136,10 @@ public:
 
 		m_pCurrentStateAlgorithm = new BurningShipComputeState;
 
-		m_MandelComputePoint.z = m_pCurrentStateAlgorithm->Clone();
+		m_MandelComputePoint.z.reset(m_pCurrentStateAlgorithm->Clone());
 		m_MandelComputePoint.maxIterations = nIterations;
 
-		m_MandelComputePointWithLoop.z = m_pCurrentStateAlgorithm->Clone();
+		m_MandelComputePointWithLoop.z.reset(m_pCurrentStateAlgorithm->Clone());
 		m_MandelComputePointWithLoop.maxIterations = nIterations;
 
 		m_pCurrentPointAlgorithm = &m_MandelComputePoint;
@@ -216,7 +216,7 @@ public:
 		inline IComputePoint* Clone() override
 		{
 			MandelComputePoint* pR = new MandelComputePoint;
-			pR->z = z->Clone();
+			pR->z.reset(z->Clone());
 			pR->maxIterations = maxIterations;
 
 			return pR;
@@ -224,7 +224,6 @@ public:
 
 		~MandelComputePoint() override
 		{
-			delete z;
 		}
 	};
 
@@ -239,7 +238,7 @@ public:
 			z->zr2 = 0;
 			z->zi2 = 0;
 
-			IComputeState *ztail = z->Clone();
+			std::unique_ptr<IComputeState> ztail(z->Clone());
 
 			int n = 0;
 			bool loops = false;
@@ -263,27 +262,22 @@ public:
 					z->Advance();
 					loop++;
 				}
-				delete ztail;
 				return loop;
 			}
 			else if (n >= maxIterations)
 			{
-				delete ztail;
 				return maxIterations;
 			}
 			else
 			{
-				delete ztail;
 				return n;
 			}
-
-			delete ztail;
 		}
 
 		inline IComputePoint* Clone() override
 		{
 			MandelComputePointWithLoop* pR = new MandelComputePointWithLoop;
-			pR->z = z->Clone();
+			pR->z.reset(z->Clone());
 			pR->maxIterations = maxIterations;
 
 			return pR;
@@ -291,7 +285,6 @@ public:
 
 		~MandelComputePointWithLoop() override
 		{
-			delete z;
 		}
 	};
 
@@ -323,7 +316,7 @@ public:
 
 			int x, n;
 
-			IComputePoint *comPoint = m_pCurrentPointAlgorithm->Clone();
+			std::unique_ptr<IComputePoint> comPoint(m_pCurrentPointAlgorithm->Clone());
 
 			for (x = pix_tl.x; x < pix_br.x; x++)
 			{
@@ -332,8 +325,6 @@ public:
 				pFractal[y_offset + x] = n;
 				x_pos += x_scale;
 			}
-
-			delete comPoint;
 		}
 	}
 
@@ -354,7 +345,7 @@ public:
 
 				int x, n;
 
-				IComputePoint* comPoint = m_pCurrentPointAlgorithm->Clone();
+				std::unique_ptr<IComputePoint> comPoint(m_pCurrentPointAlgorithm->Clone());
 
 				for (x = pix_tl.x; x < pix_br.x; x++)
 				{
@@ -363,8 +354,6 @@ public:
 					pFractal[y_offset + x] = n;
 					x_pos += x_scale;
 				}
-
-				delete comPoint;
 			});
 	}
 
@@ -445,7 +434,7 @@ public:
 			prevMousPos = pos;
 			track.clear();
 			pos = tv.ScreenToWorld(pos);
-			IComputeState *pz = m_pCurrentStateAlgorithm->Clone();
+			std::unique_ptr<IComputeState> pz(m_pCurrentStateAlgorithm->Clone());
 			pz->cr = pos.x;
 			pz->ci = pos.y;
 			pz->zr = 0;
@@ -453,7 +442,7 @@ public:
 			pz->zr2 = 0;
 			pz->zi2 = 0;
 
-			IComputeState* pztail = pz->Clone();
+			std::unique_ptr<IComputeState> pztail(pz->Clone());
 			pz->Advance();
 			int i = 1;
 			bool loops = false;
@@ -479,8 +468,6 @@ public:
 					pztail->Advance();
 				}
 			}
-			delete pz;
-			delete pztail;
 		}
 		else if (GetMouse(0).bReleased)
 		{
@@ -488,6 +475,7 @@ public:
 			loopLength = 0;
 		}
 
+		m_pCurrentPointAlgorithm->z.reset(m_pCurrentStateAlgorithm->Clone());
 		m_pCurrentPointAlgorithm->maxIterations = nIterations;
 
 		// START TIMING
