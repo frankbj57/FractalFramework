@@ -102,7 +102,7 @@ struct IComputePoint
 class FractalFramework : public olc::PixelGameEngine
 {
 public:
-	FractalFramework()
+	FractalFramework() : effectiveColorizer(&colorizer)
 	{
 		sAppName = "Fractal Framework";
 	}
@@ -479,7 +479,7 @@ public:
 				else
 				{
 					Draw(x, y, 
-						colorizer.ColorizePixel(i));
+						effectiveColorizer.ColorizePixel(i));
 				}
 			}
 		}
@@ -518,6 +518,7 @@ public:
 	olc::TransformedView tv;
 
 	ErikssonColorizer colorizer;
+	StripedColorizer effectiveColorizer;
 };
 
 const FractalFramework::method_s FractalFramework::Methods[]
