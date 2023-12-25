@@ -131,10 +131,12 @@ public:
 			{ ScreenWidth(), ScreenHeight() },
 			{ scale, -scale});
 
-		m_MandelComputePoint.z = new MandelComputeState;
+		m_pCurrentStateAlgorithm = new BurningShipComputeState;
+
+		m_MandelComputePoint.z = m_pCurrentStateAlgorithm->Clone();
 		m_MandelComputePoint.maxIterations = nIterations;
 
-		m_MandelComputePointWithLoop.z = new MandelComputeState;
+		m_MandelComputePointWithLoop.z = m_pCurrentStateAlgorithm->Clone();
 		m_MandelComputePointWithLoop.maxIterations = nIterations;
 
 		m_pCurrentPointAlgorithm = &m_MandelComputePoint;
@@ -163,6 +165,25 @@ public:
 		inline IComputeState* Clone() override
 		{
 			MandelComputeState* pR = new MandelComputeState(*this);
+
+			return pR;
+		}
+	};
+
+	struct BurningShipComputeState : public IComputeState
+	{
+		inline void Advance() override
+		{
+			zi = std::abs(zr * zi) * 2.0 + ci;
+			zr = zr2 - zi2 + cr;
+
+			zr2 = zr * zr;
+			zi2 = zi * zi;
+		}
+
+		inline IComputeState* Clone() override
+		{
+			BurningShipComputeState* pR = new BurningShipComputeState(*this);
 
 			return pR;
 		}
@@ -271,7 +292,7 @@ public:
 		}
 	};
 
-
+	IComputeState *m_pCurrentStateAlgorithm;
 	IComputePoint* m_pCurrentPointAlgorithm;
 	MandelComputePoint m_MandelComputePoint;
 	MandelComputePointWithLoop m_MandelComputePointWithLoop;
@@ -479,7 +500,7 @@ public:
 				else
 				{
 					Draw(x, y, 
-						effectiveColorizer.ColorizePixel(i));
+						colorizer.ColorizePixel(i));
 				}
 			}
 		}
