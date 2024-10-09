@@ -136,13 +136,13 @@ public:
 
 		m_pCurrentStateAlgorithm = new BurningShipComputeState;
 
-		m_MandelComputePoint.z.reset(m_pCurrentStateAlgorithm->Clone());
-		m_MandelComputePoint.maxIterations = nIterations;
+		m_ComputePoint.z.reset(m_pCurrentStateAlgorithm->Clone());
+		m_ComputePoint.maxIterations = nIterations;
 
-		m_MandelComputePointWithLoop.z.reset(m_pCurrentStateAlgorithm->Clone());
-		m_MandelComputePointWithLoop.maxIterations = nIterations;
+		m_ComputePointWithLoop.z.reset(m_pCurrentStateAlgorithm->Clone());
+		m_ComputePointWithLoop.maxIterations = nIterations;
 
-		m_pCurrentPointAlgorithm = &m_MandelComputePoint;
+		m_pCurrentPointAlgorithm = &m_ComputePoint;
 		loopCheck = false;
 		return true;
 	}
@@ -192,7 +192,7 @@ public:
 		}
 	};
 
-	struct MandelComputePoint : public IComputePoint
+	struct ComputePoint : public IComputePoint
 	{
 		inline int ComputePointCount(double x, double y) override
 		{
@@ -215,19 +215,19 @@ public:
 
 		inline IComputePoint* Clone() override
 		{
-			MandelComputePoint* pR = new MandelComputePoint;
+			ComputePoint* pR = new ComputePoint;
 			pR->z.reset(z->Clone());
 			pR->maxIterations = maxIterations;
 
 			return pR;
 		}
 
-		~MandelComputePoint() override
+		~ComputePoint() override
 		{
 		}
 	};
 
-	struct MandelComputePointWithLoop : public IComputePoint
+	struct ComputePointWithLoop : public IComputePoint
 	{
 		inline int ComputePointCount(double x, double y)
 		{
@@ -276,22 +276,22 @@ public:
 
 		inline IComputePoint* Clone() override
 		{
-			MandelComputePointWithLoop* pR = new MandelComputePointWithLoop;
+			ComputePointWithLoop* pR = new ComputePointWithLoop;
 			pR->z.reset(z->Clone());
 			pR->maxIterations = maxIterations;
 
 			return pR;
 		}
 
-		~MandelComputePointWithLoop() override
+		~ComputePointWithLoop() override
 		{
 		}
 	};
 
 	IComputeState *m_pCurrentStateAlgorithm;
 	IComputePoint* m_pCurrentPointAlgorithm;
-	MandelComputePoint m_MandelComputePoint;
-	MandelComputePointWithLoop m_MandelComputePointWithLoop;
+	ComputePoint m_ComputePoint;
+	ComputePointWithLoop m_ComputePointWithLoop;
 	bool loopCheck;
 
 	// New parallel method, using OpenMP
@@ -411,9 +411,9 @@ public:
 			// Toggle loopcheck
 			loopCheck = !loopCheck;
 			if (loopCheck)
-				m_pCurrentPointAlgorithm = &m_MandelComputePointWithLoop;
+				m_pCurrentPointAlgorithm = &m_ComputePointWithLoop;
 			else
-				m_pCurrentPointAlgorithm = &m_MandelComputePoint;
+				m_pCurrentPointAlgorithm = &m_ComputePoint;
 		}
 
 		if (GetKey(olc::S).bPressed)
@@ -426,6 +426,25 @@ public:
 				effectiveColorizer = &colorizer;
 		}
 
+		if (GetKey(olc::M).bPressed || GetKey(olc::B).bPressed)
+		{
+			if (GetKey(olc::M).bPressed)
+				m_pCurrentStateAlgorithm = new MandelComputeState;
+			else
+				m_pCurrentStateAlgorithm = new BurningShipComputeState;
+
+			m_ComputePoint.z.reset(m_pCurrentStateAlgorithm->Clone());
+			m_ComputePoint.maxIterations = nIterations;
+
+			m_ComputePointWithLoop.z.reset(m_pCurrentStateAlgorithm->Clone());
+			m_ComputePointWithLoop.maxIterations = nIterations;
+
+			if (loopCheck)
+				m_pCurrentPointAlgorithm = &m_ComputePointWithLoop;
+			else
+				m_pCurrentPointAlgorithm = &m_ComputePoint;
+
+		}
 
 		olc::vf2d pos = GetMousePos();
 		if (GetMouse(0).bPressed || (GetMouse(0).bHeld && pos != prevMousPos))
