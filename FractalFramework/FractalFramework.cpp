@@ -126,13 +126,14 @@ public:
 		effectiveColorizer = &colorizer;
 
 		// Original viewport should be x: 0 to 2, y: 0 to 1. Screencoordinates y are opposite
-		float xscale = ScreenWidth() / (2.0 - 1.0);
-		float yscale = ScreenHeight() / (1.0);
+		float xscale = ScreenWidth() / (2.0 + 1.0);
+		float yscale = ScreenHeight() / (2.0);
 		float scale = std::min(xscale, yscale);
 
 		tv.Initialise(
 			{ ScreenWidth(), ScreenHeight() },
 			{ scale, -scale});
+		tv.SetWorldOffset({-2, 1});
 
 		m_pCurrentStateAlgorithm = new BurningShipComputeState;
 
@@ -316,6 +317,7 @@ public:
 
 			int x, n;
 
+			// We need a copy for each parallel task, possibly down to each y coordinate
 			std::unique_ptr<IComputePoint> comPoint(m_pCurrentPointAlgorithm->Clone());
 
 			for (x = pix_tl.x; x < pix_br.x; x++)
@@ -345,6 +347,7 @@ public:
 
 				int x, n;
 
+				// We need a copy for each parallel task, possibly down to each y coordinate
 				std::unique_ptr<IComputePoint> comPoint(m_pCurrentPointAlgorithm->Clone());
 
 				for (x = pix_tl.x; x < pix_br.x; x++)
@@ -355,6 +358,37 @@ public:
 					x_pos += x_scale;
 				}
 			});
+	}
+
+	// Using single thread
+	void CreateFractalSingleThread(const olc::vi2d& pix_tl, const olc::vi2d& pix_br, const olc::vd2d& frac_tl, const olc::vd2d& frac_br, const int iterations)
+	{
+		const double x_scale = (frac_br.x - frac_tl.x) / (double(pix_br.x) - double(pix_tl.x));
+		const double y_scale = (frac_br.y - frac_tl.y) / (double(pix_br.y) - double(pix_tl.y));
+
+		const int row_size = ScreenWidth();
+
+		int y;
+		// We only need one for the whole picture
+		std::unique_ptr<IComputePoint> comPoint(m_pCurrentPointAlgorithm->Clone());
+
+		for (y = pix_tl.y; y < pix_br.y; y++)
+		{
+			double x_pos = frac_tl.x;
+			const double y_pos = frac_tl.y + y * y_scale;
+
+			const int y_offset = y * row_size;
+
+			int x, n;
+
+			for (x = pix_tl.x; x < pix_br.x; x++)
+			{
+				n = comPoint->ComputePointCount(x_pos, y_pos);
+
+				pFractal[y_offset + x] = n;
+				x_pos += x_scale;
+			}
+		}
 	}
 
 	CircularBuffer<std::chrono::duration<double>> elapseBuffer = CircularBuffer<std::chrono::duration<double>>(40);
@@ -388,6 +422,7 @@ public:
 		// Handle User Input
 		if (GetKey(olc::K1).bPressed) nMode = 0;
 		if (GetKey(olc::K2).bPressed) nMode = 1;
+		if (GetKey(olc::K3).bPressed) nMode = 2;
 
 		if (GetKey(olc::UP).bPressed)
 		{
@@ -575,6 +610,10 @@ const FractalFramework::method_s FractalFramework::Methods[]
 	{
 		&FractalFramework::CreateFractalParallelization,
 		"parallel_for Method"
+	},
+	{
+		&FractalFramework::CreateFractalSingleThread,
+		"Single Thread Method"
 	},
 };
 

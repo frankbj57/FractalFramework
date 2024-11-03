@@ -5,11 +5,11 @@
 
 class ErikssonColorizer : public IColorizer
 {
-	static constexpr float pi = 3.141593f;
-	static constexpr float pithird = pi / 3;
+	const float pi = 3.141593f;
+	const float pithird = pi / 3;
 
 public:
-	ErikssonColorizer()
+	ErikssonColorizer() : pi(acosf(-1.0)), pithird(pi/3)
 	{
 		scale = 256.0;
 	}
