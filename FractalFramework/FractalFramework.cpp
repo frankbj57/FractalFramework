@@ -72,6 +72,9 @@
 #include "olcPGEX_TransformedView.h"
 
 #include <ppl.h>
+#include <algorithm>
+#include <execution>
+#include <numeric>
 
 #include "CircularBufferTemplate.h"
 #include "ErikssonColorizer.h"
@@ -135,7 +138,7 @@ public:
 			{ scale, -scale});
 		tv.SetWorldOffset({-2, 1});
 
-		m_pCurrentStateAlgorithm = new BurningShipComputeState;
+		m_pCurrentStateAlgorithm = new MandelComputeState;
 
 		m_ComputePoint.z.reset(m_pCurrentStateAlgorithm->Clone());
 		m_ComputePoint.maxIterations = nIterations;
@@ -330,7 +333,7 @@ public:
 		}
 	}
 
-	// Using built in parallelisation
+	// Using concurrency library parallelization
 	void CreateFractalParallelization(const olc::vi2d& pix_tl, const olc::vi2d& pix_br, const olc::vd2d& frac_tl, const olc::vd2d& frac_br, const int iterations)
 	{
 		const double x_scale = (frac_br.x - frac_tl.x) / (double(pix_br.x) - double(pix_tl.x));
@@ -341,7 +344,40 @@ public:
 		concurrency::parallel_for(int(pix_tl.y), int(pix_br.y), [&](int y)
 			{
 				double x_pos = frac_tl.x;
-				const double y_pos = frac_tl.y+y*y_scale;
+				const double y_pos = frac_tl.y + y * y_scale;
+
+				const int y_offset = y * row_size;
+
+				int x, n;
+
+				// We need a copy for each parallel task, possibly down to each y coordinate
+				std::unique_ptr<IComputePoint> comPoint(m_pCurrentPointAlgorithm->Clone());
+
+				for (x = pix_tl.x; x < pix_br.x; x++)
+				{
+					n = comPoint->ComputePointCount(x_pos, y_pos);
+
+					pFractal[y_offset + x] = n;
+					x_pos += x_scale;
+				}
+			});
+	}
+
+	// Using built C++17 parallelization
+	void CreateFractalCppForEachAlgorithm(const olc::vi2d& pix_tl, const olc::vi2d& pix_br, const olc::vd2d& frac_tl, const olc::vd2d& frac_br, const int iterations)
+	{
+		const double x_scale = (frac_br.x - frac_tl.x) / (double(pix_br.x) - double(pix_tl.x));
+		const double y_scale = (frac_br.y - frac_tl.y) / (double(pix_br.y) - double(pix_tl.y));
+
+		const int row_size = ScreenWidth();
+
+		std::vector<int> indexes(int(pix_br.y - pix_tl.y));
+		std::iota(indexes.begin(), indexes.end(), 0);
+
+		std::for_each_n(std::execution::par, indexes.begin(), int(pix_br.y - pix_tl.y), [&](int y)
+			{
+				double x_pos = frac_tl.x;
+				const double y_pos = frac_tl.y + y * y_scale;
 
 				const int y_offset = y * row_size;
 
@@ -396,11 +432,20 @@ public:
 	using CreateFractalFunction = void(const olc::vi2d& pix_tl, const olc::vi2d& pix_br, const olc::vd2d& frac_tl, const olc::vd2d& frac_br, const int iterations);
 
 	struct method_s {
+		olc::Key key;
 		CreateFractalFunction FractalFramework::* pCreateMethod;
 		string description;
 	};
 
-	static const method_s Methods[];
+	static const std::vector<method_s> Methods;
+
+	using KeyCommandFunction = bool(olc::Key);
+
+	struct key_command_s {
+		olc::Key key;
+		std::string description;
+		KeyCommandFunction FractalFramework::* pKeyCommandFunction;
+	};
 
 	vector<olc::vf2d> track;
 	olc::vf2d prevMousPos;
@@ -420,9 +465,15 @@ public:
 		frac_br = tv.ScreenToWorld(pix_br);
 
 		// Handle User Input
-		if (GetKey(olc::K1).bPressed) nMode = 0;
-		if (GetKey(olc::K2).bPressed) nMode = 1;
-		if (GetKey(olc::K3).bPressed) nMode = 2;
+		// Determine overall algorithm
+		for (size_t i = 0; i < Methods.size(); i++)
+		{
+			if (GetKey(Methods[i].key).bPressed)
+			{
+				nMode = i;
+				break;
+			}
+		}
 
 		if (GetKey(olc::UP).bPressed)
 		{
@@ -600,20 +651,28 @@ public:
 	StripedColorizer stripedColorizer;
 };
 
-const FractalFramework::method_s FractalFramework::Methods[]
+const std::vector<FractalFramework::method_s> FractalFramework::Methods
 =
 {
 	{
+		olc::K1,
 		&FractalFramework::CreateFractalOpenMP,
 		"OpenMP parallel for"
 	},
 	{
+		olc::K2,
 		&FractalFramework::CreateFractalParallelization,
 		"parallel_for Method"
 	},
 	{
+		olc::K3,
 		&FractalFramework::CreateFractalSingleThread,
 		"Single Thread Method"
+	},
+	{
+		olc::K4,
+		&FractalFramework::CreateFractalCppForEachAlgorithm,
+		"C++17 for_each_n parallel implementation"
 	},
 };
 
