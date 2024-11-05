@@ -1,5 +1,5 @@
 /*
-	Fractal Viewing framework, 
+	Fractal Viewing framework,
 	based on Javidx9's:
 	Brute Force Processing a Mandelbrot Renderer
 	"Dammit Moros & Saladin, you guys keep making tools, I'll have nothing left to video..." - javidx9
@@ -71,7 +71,11 @@
 #define OLC_PGEX_TRANSFORMEDVIEW
 #include "olcPGEX_TransformedView.h"
 
+
+#if defined(_MSC_VER)
 #include <ppl.h>
+#endif
+
 #include <algorithm>
 #include <execution>
 #include <numeric>
@@ -95,9 +99,10 @@ struct IComputeState
 struct IComputePoint
 {
 	std::unique_ptr<IComputeState> z;
-	int maxIterations;
+	int maxIterations = 256;
+	double bailOutSquare = 4.0;
 
-	virtual int ComputePointCount(double x, double y) = 0;
+	virtual int ComputePointCount(double x, double y, double initr = 0.0, double initi = 0.0) = 0;
 	virtual IComputePoint* Clone() = 0;
 	virtual ~IComputePoint() {}
 };
@@ -111,7 +116,7 @@ public:
 	}
 
 	int* pFractal = nullptr;
-	int nMode = 1;
+	int nMode = 3;
 	int nIterations = 256;
 	bool striped = false;
 
@@ -135,19 +140,30 @@ public:
 
 		tv.Initialise(
 			{ ScreenWidth(), ScreenHeight() },
-			{ scale, -scale});
-		tv.SetWorldOffset({-2, 1});
+			{ scale, -scale });
+		tv.SetWorldOffset({ -2, 1 });
 
-		m_pCurrentStateAlgorithm = new MandelComputeState;
+		m_pCurrentStateAlgorithm = new LogisticComputeState;
 
 		m_ComputePoint.z.reset(m_pCurrentStateAlgorithm->Clone());
 		m_ComputePoint.maxIterations = nIterations;
+		m_ComputePoint.bailOutSquare = 16;
 
 		m_ComputePointWithLoop.z.reset(m_pCurrentStateAlgorithm->Clone());
 		m_ComputePointWithLoop.maxIterations = nIterations;
+		m_ComputePointWithLoop.bailOutSquare = 16;
 
 		m_pCurrentPointAlgorithm = &m_ComputePoint;
 		loopCheck = false;
+
+		// List commands
+		std::cout << "Available commands:" << std::endl;
+
+		for (const auto &c : KeyCommands)
+		{
+			std::cout << c.keyName << ":\t" << c.commandDescription << endl;
+		}
+
 		return true;
 	}
 
@@ -196,19 +212,41 @@ public:
 		}
 	};
 
+	struct LogisticComputeState : public IComputeState
+	{
+		inline void Advance() override
+		{
+			double fr = (zr - zr2 + zi2);
+			double fi = (zi - 2 * zr * zi);
+
+			zr = cr * fr - ci * fi;
+			zi = ci * fr + cr * fi;
+
+			zr2 = zr * zr;
+			zi2 = zi * zi;
+		}
+
+		inline IComputeState* Clone() override
+		{
+			LogisticComputeState* pR = new LogisticComputeState(*this);
+
+			return pR;
+		}
+	};
+
 	struct ComputePoint : public IComputePoint
 	{
-		inline int ComputePointCount(double x, double y) override
+		inline int ComputePointCount(double x, double y, double initr = 0.0, double initi = 0.0) override
 		{
 			int n = 0;
 			z->ci = y;
 			z->cr = x;
-			z->zr = 0;
-			z->zi = 0;
-			z->zr2 = 0;
-			z->zi2 = 0;
+			z->zr = initr;
+			z->zi = initi;
+			z->zr2 = z->zr * z->zr;
+			z->zi2 = z->zi * z->zi;
 
-			while ((z->zr2 + z->zi2) < 4.0 && n < maxIterations)
+			while ((z->zr2 + z->zi2) < bailOutSquare && n < maxIterations)
 			{
 				z->Advance();
 				n++;
@@ -222,6 +260,7 @@ public:
 			ComputePoint* pR = new ComputePoint;
 			pR->z.reset(z->Clone());
 			pR->maxIterations = maxIterations;
+			pR->bailOutSquare = bailOutSquare;
 
 			return pR;
 		}
@@ -233,20 +272,20 @@ public:
 
 	struct ComputePointWithLoop : public IComputePoint
 	{
-		inline int ComputePointCount(double x, double y)
+		inline int ComputePointCount(double x, double y, double initr = 0.0, double initi = 0.0) override
 		{
 			z->ci = y;
 			z->cr = x;
-			z->zr = 0;
-			z->zi = 0;
-			z->zr2 = 0;
-			z->zi2 = 0;
+			z->zr = initr;
+			z->zi = initi;
+			z->zr2 = z->zr * z->zr;
+			z->zi2 = z->zi * z->zi;
 
 			std::unique_ptr<IComputeState> ztail(z->Clone());
 
 			int n = 0;
 			bool loops = false;
-			while ((z->zr2 + z->zi2) < 4.0 && n < maxIterations && !loops)
+			while ((z->zr2 + z->zi2) < bailOutSquare && n < maxIterations && !loops)
 			{
 				z->Advance();
 				loops = z->zr == ztail->zr && z->zi == ztail->zi;
@@ -283,6 +322,7 @@ public:
 			ComputePointWithLoop* pR = new ComputePointWithLoop;
 			pR->z.reset(z->Clone());
 			pR->maxIterations = maxIterations;
+			pR->bailOutSquare = bailOutSquare;
 
 			return pR;
 		}
@@ -292,7 +332,7 @@ public:
 		}
 	};
 
-	IComputeState *m_pCurrentStateAlgorithm;
+	IComputeState* m_pCurrentStateAlgorithm;
 	IComputePoint* m_pCurrentPointAlgorithm;
 	ComputePoint m_ComputePoint;
 	ComputePointWithLoop m_ComputePointWithLoop;
@@ -332,7 +372,7 @@ public:
 			}
 		}
 	}
-
+#if defined(_MSC_VER)
 	// Using concurrency library parallelization
 	void CreateFractalParallelization(const olc::vi2d& pix_tl, const olc::vi2d& pix_br, const olc::vd2d& frac_tl, const olc::vd2d& frac_br, const int iterations)
 	{
@@ -362,6 +402,7 @@ public:
 				}
 			});
 	}
+#endif
 
 	// Using built C++17 parallelization
 	void CreateFractalCppForEachAlgorithm(const olc::vi2d& pix_tl, const olc::vi2d& pix_br, const olc::vd2d& frac_tl, const olc::vd2d& frac_br, const int iterations)
@@ -388,7 +429,7 @@ public:
 
 				for (x = pix_tl.x; x < pix_br.x; x++)
 				{
-					n = comPoint->ComputePointCount(x_pos, y_pos);
+					n = comPoint->ComputePointCount(x_pos, y_pos, 0.5, 0);
 
 					pFractal[y_offset + x] = n;
 					x_pos += x_scale;
@@ -443,13 +484,70 @@ public:
 
 	struct key_command_s {
 		olc::Key key;
-		std::string description;
+		std::string keyName;
+		std::string commandDescription;
 		KeyCommandFunction FractalFramework::* pKeyCommandFunction;
 	};
+
+	static const std::vector<FractalFramework::key_command_s> KeyCommands;
 
 	vector<olc::vf2d> track;
 	olc::vf2d prevMousPos;
 	int loopLength = 0;
+
+	bool ToggleStripes(olc::Key)
+	{
+		// Toggle striped
+		striped = !striped;
+		if (striped)
+			effectiveColorizer = &stripedColorizer;
+		else
+			effectiveColorizer = &colorizer;
+
+		return true;
+	}
+
+	bool ToggleLoopDetection(olc::Key)
+	{
+		// Toggle loopcheck
+		loopCheck = !loopCheck;
+		if (loopCheck)
+			m_pCurrentPointAlgorithm = &m_ComputePointWithLoop;
+		else
+			m_pCurrentPointAlgorithm = &m_ComputePoint;
+
+		return true;
+	}
+
+	bool AdjustIterations(olc::Key key)
+	{
+		switch (key)
+		{
+			case olc::UP:
+			{
+				nIterations += 64;
+			}
+			break;
+
+			case olc::DOWN:
+			{
+				nIterations -= 64;
+			}
+			break;
+		}
+
+		if (nIterations < 64)
+		{
+			nIterations = 64;
+		}
+
+		return true;
+	}
+
+	bool ExitProgram(olc::Key)
+	{
+		return false;
+	}
 
 	bool OnUserUpdate(float fElapsedTime) override
 	{
@@ -475,41 +573,13 @@ public:
 			}
 		}
 
-		if (GetKey(olc::UP).bPressed)
+		for (const auto & c : KeyCommands)
 		{
-			nIterations += 64;
-			colorizer.scale = nIterations;
-		}
-		if (GetKey(olc::DOWN).bPressed)
-		{
-			nIterations -= 64;
-			colorizer.scale = nIterations;
-		}
-
-		if (nIterations < 64)
-		{
-			nIterations = 64;
-			colorizer.scale = nIterations;
-		}
-
-		if (GetKey(olc::L).bPressed)
-		{
-			// Toggle loopcheck
-			loopCheck = !loopCheck;
-			if (loopCheck)
-				m_pCurrentPointAlgorithm = &m_ComputePointWithLoop;
-			else
-				m_pCurrentPointAlgorithm = &m_ComputePoint;
-		}
-
-		if (GetKey(olc::S).bPressed)
-		{
-			// Toggle striped
-			striped = !striped;
-			if (striped)
-				effectiveColorizer = &stripedColorizer;
-			else
-				effectiveColorizer = &colorizer;
+			if (GetKey(c.key).bPressed)
+			{
+				if (!(this->*c.pKeyCommandFunction)(c.key))
+					return false;
+			}
 		}
 
 		if (GetKey(olc::M).bPressed || GetKey(olc::B).bPressed)
@@ -518,17 +588,6 @@ public:
 				m_pCurrentStateAlgorithm = new MandelComputeState;
 			else
 				m_pCurrentStateAlgorithm = new BurningShipComputeState;
-
-			m_ComputePoint.z.reset(m_pCurrentStateAlgorithm->Clone());
-			m_ComputePoint.maxIterations = nIterations;
-
-			m_ComputePointWithLoop.z.reset(m_pCurrentStateAlgorithm->Clone());
-			m_ComputePointWithLoop.maxIterations = nIterations;
-
-			if (loopCheck)
-				m_pCurrentPointAlgorithm = &m_ComputePointWithLoop;
-			else
-				m_pCurrentPointAlgorithm = &m_ComputePoint;
 
 		}
 
@@ -542,16 +601,16 @@ public:
 			std::unique_ptr<IComputeState> pz(m_pCurrentStateAlgorithm->Clone());
 			pz->cr = pos.x;
 			pz->ci = pos.y;
-			pz->zr = 0;
+			pz->zr = 0.5;
 			pz->zi = 0;
-			pz->zr2 = 0;
-			pz->zi2 = 0;
+			pz->zr2 = pz->zr * pz->zr;
+			pz->zi2 = pz->zi * pz->zi;
 
 			std::unique_ptr<IComputeState> pztail(pz->Clone());
 			pz->Advance();
 			int i = 1;
 			bool loops = false;
-			while ((pz->zr2 + pz->zi2) < 4.0 && i < nIterations && !loops)
+			while ((pz->zr2 + pz->zi2) < 16.0 && i < nIterations && !loops)
 			{
 				track.push_back({ (float)pz->zr, (float)pz->zi });
 				pz->Advance();
@@ -580,6 +639,11 @@ public:
 			loopLength = 0;
 		}
 
+		if (loopCheck)
+			m_pCurrentPointAlgorithm = &m_ComputePointWithLoop;
+		else
+			m_pCurrentPointAlgorithm = &m_ComputePoint;
+
 		m_pCurrentPointAlgorithm->z.reset(m_pCurrentStateAlgorithm->Clone());
 		m_pCurrentPointAlgorithm->maxIterations = nIterations;
 
@@ -596,6 +660,8 @@ public:
 		elapseBuffer.insert(elapsedTime);
 
 		// Render result to screen
+		effectiveColorizer->scale = nIterations;
+
 		for (int y = 0; y < ScreenHeight(); y++)
 		{
 			for (int x = 0; x < ScreenWidth(); x++)
@@ -607,7 +673,7 @@ public:
 				}
 				else
 				{
-					Draw(x, y, 
+					Draw(x, y,
 						effectiveColorizer->ColorizePixel(i));
 				}
 			}
@@ -633,13 +699,19 @@ public:
 		}
 
 		// Render UI
-		DrawString(0, 0, std::to_string(nMode+1) + ") " + Methods[nMode].description, olc::WHITE, 3);
+		DrawString(0, 0, std::to_string(nMode + 1) + ") " + Methods[nMode].description, olc::WHITE, 3);
 
 		// DrawString(0, 30, "Time Taken: " + std::to_string(elapsedTime.count()) + "s", olc::WHITE, 3);
 		DrawString(0, 30, "Time Taken: " + std::to_string(elapseBuffer.meanValue().count()) + "s", olc::WHITE, 3);
 		DrawString(0, 60, "Iterations: " + std::to_string(m_pCurrentPointAlgorithm->maxIterations), olc::WHITE, 3);
-		DrawString(0, 90, "Track length: " + std::to_string(track.size()), olc::WHITE, 3);
-		DrawString(0, 120, "Loop length: " + std::to_string(loopLength), olc::WHITE, 3);
+		
+		if (track.size() > 1)
+		{
+			DrawString(0, 90, "Track length: " + std::to_string(track.size()), olc::WHITE, 3);
+			DrawString(0, 120, "Loop length: " + std::to_string(loopLength), olc::WHITE, 3);
+		}
+
+		// Exit program when returning false
 		return !(GetKey(olc::Key::ESCAPE).bPressed);
 	}
 
@@ -659,11 +731,13 @@ const std::vector<FractalFramework::method_s> FractalFramework::Methods
 		&FractalFramework::CreateFractalOpenMP,
 		"OpenMP parallel for"
 	},
+#if defined(_MSC_VER)
 	{
 		olc::K2,
 		&FractalFramework::CreateFractalParallelization,
 		"parallel_for Method"
 	},
+#endif
 	{
 		olc::K3,
 		&FractalFramework::CreateFractalSingleThread,
@@ -676,6 +750,42 @@ const std::vector<FractalFramework::method_s> FractalFramework::Methods
 	},
 };
 
+#define keyData(k) olc::k, #k
+
+const std::vector<FractalFramework::key_command_s> FractalFramework::KeyCommands
+=
+{
+	{
+		keyData(S),
+		"Toggle striped colorizer",
+		&FractalFramework::ToggleStripes
+	},
+	{
+		keyData(L),
+		"Toggle loop detection",
+		&FractalFramework::ToggleLoopDetection
+	},
+	{
+		keyData(UP),
+		"Increase maximum interation",
+		&FractalFramework::AdjustIterations
+	},
+	{
+		keyData(DOWN),
+		"Increase maximum interation",
+		&FractalFramework::AdjustIterations
+	},
+	{
+		keyData(Q),
+		"Exit program",
+		&FractalFramework::ExitProgram
+	},
+	{
+		keyData(ESCAPE),
+		"Exit program",
+		&FractalFramework::ExitProgram
+	},
+};
 
 int main()
 {

@@ -13,7 +13,7 @@ public:
 		}
 		else
 		{
-			return pCore->ColorizePixel(value / 2);
+			return pCore->ColorizePixel(value);
 		}
 	}
 
