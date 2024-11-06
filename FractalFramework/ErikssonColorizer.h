@@ -24,7 +24,7 @@ public:
 		// Thank you @Eriksonn - Wonderful Magic Fractal Oddball Man
 		float scaledAngle = 2 * pi * value / scale;
 
-		return olc::PixelF(0.5f * std::sinf(scaledAngle) + 0.5f, 0.5f * sinf(scaledAngle + 2*pithird) + 0.5f, 0.5f * sinf(scaledAngle + 4*pithird) + 0.5f);
+		return olc::PixelF(0.5f * std::sin(scaledAngle) + 0.5f, 0.5f * sin(scaledAngle + 2*pithird) + 0.5f, 0.5f * sin(scaledAngle + 4*pithird) + 0.5f);
 	}
 
 private:

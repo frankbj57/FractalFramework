@@ -92,6 +92,12 @@ struct IComputeState
 	double zr, zi;
 	double zr2, zi2;
 
+	virtual void Initialize(double constX, double constY, double initX, double initY)
+	{
+		cr = constX; ci = constY;
+		zr = initX; zi = initY;
+		zr2 = zr * zr; zi2 = zi * zi;
+	}
 	virtual void Advance() = 0;
 	virtual IComputeState* Clone() = 0;
 };
@@ -115,10 +121,22 @@ public:
 		sAppName = "Fractal Framework";
 	}
 
-	int* pFractal = nullptr;
-	int nMode = 3;
-	int nIterations = 256;
-	bool striped = false;
+	int* pFractal = nullptr;  // Result buffer - matches screen size
+	int nMode = 2;
+	int nIterations = 256;  // Classic fractal maximum interation
+	double bailoutSquared = 4.0;  // Classic fractal bailout value, squared for easier calculations
+	olc::vd2d juliaSeed{ 1, 0 }; // Current constant for julia set calculations
+	olc::vd2d z0Value{ 0,0 };   // Current startvalue if not julia calculation
+
+	bool julia = false;
+	bool striped = false;  // Use triped colorization
+	bool loopCheck = false;
+
+	std::unique_ptr<IComputeState> m_pCurrentStateAlgorithm;
+	std::unique_ptr<IComputePoint> m_pCurrentPointAlgorithm;
+
+
+
 
 public:
 	bool OnUserCreate() override
@@ -143,17 +161,18 @@ public:
 			{ scale, -scale });
 		tv.SetWorldOffset({ -2, 1 });
 
-		m_pCurrentStateAlgorithm = new LogisticComputeState;
+		m_pCurrentStateAlgorithm.reset(new MandelComputeState);
 
-		m_ComputePoint.z.reset(m_pCurrentStateAlgorithm->Clone());
-		m_ComputePoint.maxIterations = nIterations;
-		m_ComputePoint.bailOutSquare = 16;
+		//m_ComputePoint.z.reset(m_pCurrentStateAlgorithm->Clone());
+		//m_ComputePoint.maxIterations = nIterations;
+		//m_ComputePoint.bailOutSquare = 16;
 
-		m_ComputePointWithLoop.z.reset(m_pCurrentStateAlgorithm->Clone());
-		m_ComputePointWithLoop.maxIterations = nIterations;
-		m_ComputePointWithLoop.bailOutSquare = 16;
+		//m_ComputePointWithLoop.z.reset(m_pCurrentStateAlgorithm->Clone());
+		//m_ComputePointWithLoop.maxIterations = nIterations;
+		//m_ComputePointWithLoop.bailOutSquare = 16;
 
-		m_pCurrentPointAlgorithm = &m_ComputePoint;
+		//m_pCurrentPointAlgorithm.reset(m_ComputePoint.Clone());
+
 		loopCheck = false;
 
 		// List commands
@@ -240,12 +259,8 @@ public:
 		inline int ComputePointCount(double x, double y, double initr = 0.0, double initi = 0.0) override
 		{
 			int n = 0;
-			z->ci = y;
-			z->cr = x;
-			z->zr = initr;
-			z->zi = initi;
-			z->zr2 = z->zr * z->zr;
-			z->zi2 = z->zi * z->zi;
+
+			z->Initialize(x, y, initr, initi);
 
 			while ((z->zr2 + z->zi2) < bailOutSquare && n < maxIterations)
 			{
@@ -275,16 +290,12 @@ public:
 	{
 		inline int ComputePointCount(double x, double y, double initr = 0.0, double initi = 0.0) override
 		{
-			z->ci = y;
-			z->cr = x;
-			z->zr = initr;
-			z->zi = initi;
-			z->zr2 = z->zr * z->zr;
-			z->zi2 = z->zi * z->zi;
+			int n = 0;
+				
+			z->Initialize(x, y, initr, initi);
 
 			std::unique_ptr<IComputeState> ztail(z->Clone());
 
-			int n = 0;
 			bool loops = false;
 			while ((z->zr2 + z->zi2) < bailOutSquare && n < maxIterations && !loops)
 			{
@@ -333,12 +344,6 @@ public:
 		}
 	};
 
-	IComputeState* m_pCurrentStateAlgorithm;
-	IComputePoint* m_pCurrentPointAlgorithm;
-	ComputePoint m_ComputePoint;
-	ComputePointWithLoop m_ComputePointWithLoop;
-	bool loopCheck;
-
 	// New parallel method, using OpenMP
 	void CreateFractalOpenMP(const olc::vi2d& pix_tl, const olc::vi2d& pix_br, const olc::vd2d& frac_tl, const olc::vd2d& frac_br, const int iterations)
 	{
@@ -366,7 +371,7 @@ public:
 
 			for (x = pix_tl.x; x < pix_br.x; x++)
 			{
-				n = comPoint->ComputePointCount(x_pos, y_pos);
+				n = comPoint->ComputePointCount(x_pos, y_pos, z0Value.x, z0Value.y);
 
 				pFractal[y_offset + x] = n;
 				x_pos += x_scale;
@@ -396,7 +401,7 @@ public:
 
 				for (x = pix_tl.x; x < pix_br.x; x++)
 				{
-					n = comPoint->ComputePointCount(x_pos, y_pos);
+					n = comPoint->ComputePointCount(x_pos, y_pos, z0Value.x, z0Value.y);
 
 					pFractal[y_offset + x] = n;
 					x_pos += x_scale;
@@ -416,7 +421,7 @@ public:
 		std::vector<int> indexes(int(pix_br.y - pix_tl.y));
 		std::iota(indexes.begin(), indexes.end(), 0);
 
-		std::for_each_n(std::execution::par, indexes.begin(), int(pix_br.y - pix_tl.y), [&](int y)
+		std::for_each_n(std::execution::par, indexes.begin(), int(pix_br.y - pix_tl.y), [=](int y)
 			{
 				double x_pos = frac_tl.x;
 				const double y_pos = frac_tl.y + y * y_scale;
@@ -430,7 +435,7 @@ public:
 
 				for (x = pix_tl.x; x < pix_br.x; x++)
 				{
-					n = comPoint->ComputePointCount(x_pos, y_pos, 0.5, 0);
+					n = comPoint->ComputePointCount(x_pos, y_pos, z0Value.x, z0Value.y);
 
 					pFractal[y_offset + x] = n;
 					x_pos += x_scale;
@@ -461,7 +466,7 @@ public:
 
 			for (x = pix_tl.x; x < pix_br.x; x++)
 			{
-				n = comPoint->ComputePointCount(x_pos, y_pos);
+				n = comPoint->ComputePointCount(x_pos, y_pos, z0Value.x, z0Value.y);
 
 				pFractal[y_offset + x] = n;
 				x_pos += x_scale;
@@ -513,9 +518,9 @@ public:
 		// Toggle loopcheck
 		loopCheck = !loopCheck;
 		if (loopCheck)
-			m_pCurrentPointAlgorithm = &m_ComputePointWithLoop;
+			m_pCurrentPointAlgorithm.reset(new ComputePointWithLoop);
 		else
-			m_pCurrentPointAlgorithm = &m_ComputePoint;
+			m_pCurrentPointAlgorithm.reset(new ComputePoint);
 
 		return true;
 	}
@@ -553,7 +558,7 @@ public:
 	bool OnUserUpdate(float fElapsedTime) override
 	{
 		// Handle transform control
-		tv.HandlePanAndZoom();
+		tv.HandlePanAndZoom(olc::Mouse::MIDDLE, 0.2, true, true);
 
 		olc::vi2d pix_tl = { 0,0 };
 		olc::vi2d pix_br = { ScreenWidth(), ScreenHeight() };
@@ -586,10 +591,9 @@ public:
 		if (GetKey(olc::M).bPressed || GetKey(olc::B).bPressed)
 		{
 			if (GetKey(olc::M).bPressed)
-				m_pCurrentStateAlgorithm = new MandelComputeState;
+				m_pCurrentStateAlgorithm.reset(new MandelComputeState);
 			else
-				m_pCurrentStateAlgorithm = new BurningShipComputeState;
-
+				m_pCurrentStateAlgorithm.reset(new BurningShipComputeState);
 		}
 
 		olc::vf2d pos = GetMousePos();
@@ -600,18 +604,14 @@ public:
 			track.clear();
 			pos = tv.ScreenToWorld(pos);
 			std::unique_ptr<IComputeState> pz(m_pCurrentStateAlgorithm->Clone());
-			pz->cr = pos.x;
-			pz->ci = pos.y;
-			pz->zr = 0.5;
-			pz->zi = 0;
-			pz->zr2 = pz->zr * pz->zr;
-			pz->zi2 = pz->zi * pz->zi;
+
+			pz->Initialize(pos.x, pos.y, z0Value.x, z0Value.y);
 
 			std::unique_ptr<IComputeState> pztail(pz->Clone());
 			pz->Advance();
 			int i = 1;
 			bool loops = false;
-			while ((pz->zr2 + pz->zi2) < 16.0 && i < nIterations && !loops)
+			while ((pz->zr2 + pz->zi2) < bailoutSquared && i < nIterations && !loops)
 			{
 				track.push_back({ (float)pz->zr, (float)pz->zi });
 				pz->Advance();
@@ -641,12 +641,13 @@ public:
 		}
 
 		if (loopCheck)
-			m_pCurrentPointAlgorithm = &m_ComputePointWithLoop;
+			m_pCurrentPointAlgorithm.reset(new ComputePointWithLoop);
 		else
-			m_pCurrentPointAlgorithm = &m_ComputePoint;
+			m_pCurrentPointAlgorithm.reset(new ComputePoint);
 
 		m_pCurrentPointAlgorithm->z.reset(m_pCurrentStateAlgorithm->Clone());
 		m_pCurrentPointAlgorithm->maxIterations = nIterations;
+		m_pCurrentPointAlgorithm->bailOutSquare = bailoutSquared;
 
 		// START TIMING
 		auto tp1 = std::chrono::high_resolution_clock::now();
