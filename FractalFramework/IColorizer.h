@@ -19,7 +19,8 @@ public:
 	IColorizerDecorator(IColorizer* pCore) : pCore(pCore) {}
 	olc::Pixel ColorizePixel(int value) override { return pCore->ColorizePixel(value); }
 	olc::Pixel ColorizePixel(float value) override { return pCore->ColorizePixel(value); }
+	IColorizer* pCore;
 
 protected:
-	IColorizer* pCore;
+
 };

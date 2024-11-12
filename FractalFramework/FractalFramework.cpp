@@ -83,8 +83,7 @@
 #include "CircularBufferTemplate.h"
 #include "ErikssonColorizer.h"
 #include "StripedColorizer.h"
-
-constexpr int nMaxThreads = 32;
+#include "InterpolatingColorizer.h"
 
 struct IComputeState
 {
@@ -122,14 +121,14 @@ public:
 	}
 
 	int* pFractal = nullptr;  // Result buffer - matches screen size
-	int nMode = 2;
+	int nMode = Methods.size()-1;
 	int nIterations = 256;  // Classic fractal maximum interation
 	double bailoutSquared = 4.0;  // Classic fractal bailout value, squared for easier calculations
 	olc::vd2d juliaSeed{ 1, 0 }; // Current constant for julia set calculations
 	olc::vd2d z0Value{ 0,0 };   // Current startvalue if not julia calculation
 
 	bool julia = false;
-	bool striped = false;  // Use triped colorization
+	bool striped = false;  // Use striped colorization
 	bool loopCheck = false;
 
 	std::unique_ptr<IComputeState> m_pCurrentStateAlgorithm;
@@ -149,29 +148,25 @@ public:
 
 		colorizer.scale = nIterations;
 
-		effectiveColorizer = &colorizer;
+		// effectiveColorizer = &colorizer;
+		colorUpColorizer.fromColor = olc::RED;
+		colorUpColorizer.toColor = olc::GREEN;
+		colorUpColorizer.fromValue = 1;
+		colorUpColorizer.toValue = 256;
+
+		basicColorizer = effectiveColorizer = &colorUpColorizer;
 
 		// Original viewport should be x: 0 to 2, y: 0 to 1. Screencoordinates y are opposite
-		float xscale = ScreenWidth() / (2.0 + 1.0);
-		float yscale = ScreenHeight() / (2.0);
+		float xscale = ScreenWidth() / (2.5 + 4.0);
+		float yscale = ScreenHeight() / (2.5);
 		float scale = std::min(xscale, yscale);
 
 		tv.Initialise(
 			{ ScreenWidth(), ScreenHeight() },
 			{ scale, -scale });
-		tv.SetWorldOffset({ -2, 1 });
+		tv.SetWorldOffset({ -2.5, 1.5 });
 
 		m_pCurrentStateAlgorithm.reset(new MandelComputeState);
-
-		//m_ComputePoint.z.reset(m_pCurrentStateAlgorithm->Clone());
-		//m_ComputePoint.maxIterations = nIterations;
-		//m_ComputePoint.bailOutSquare = 16;
-
-		//m_ComputePointWithLoop.z.reset(m_pCurrentStateAlgorithm->Clone());
-		//m_ComputePointWithLoop.maxIterations = nIterations;
-		//m_ComputePointWithLoop.bailOutSquare = 16;
-
-		//m_pCurrentPointAlgorithm.reset(m_ComputePoint.Clone());
 
 		loopCheck = false;
 
@@ -421,7 +416,7 @@ public:
 		std::vector<int> indexes(int(pix_br.y - pix_tl.y));
 		std::iota(indexes.begin(), indexes.end(), 0);
 
-		std::for_each_n(std::execution::par, indexes.begin(), int(pix_br.y - pix_tl.y), [=](int y)
+		std::for_each_n(std::execution::par, indexes.begin(), int(pix_br.y - pix_tl.y), [&](int y)
 			{
 				double x_pos = frac_tl.x;
 				const double y_pos = frac_tl.y + y * y_scale;
@@ -466,7 +461,14 @@ public:
 
 			for (x = pix_tl.x; x < pix_br.x; x++)
 			{
-				n = comPoint->ComputePointCount(x_pos, y_pos, z0Value.x, z0Value.y);
+				if (julia)
+				{
+					n = comPoint->ComputePointCount(juliaSeed.x, juliaSeed.y, x_pos, y_pos);
+				}
+				else
+				{
+					n = comPoint->ComputePointCount(x_pos, y_pos, z0Value.x, z0Value.y);
+				}
 
 				pFractal[y_offset + x] = n;
 				x_pos += x_scale;
@@ -506,9 +508,14 @@ public:
 		// Toggle striped
 		striped = !striped;
 		if (striped)
+		{
+			stripedColorizer.pCore = basicColorizer;
 			effectiveColorizer = &stripedColorizer;
+		}
 		else
-			effectiveColorizer = &colorizer;
+		{
+			effectiveColorizer = basicColorizer;
+		}
 
 		return true;
 	}
@@ -521,6 +528,14 @@ public:
 			m_pCurrentPointAlgorithm.reset(new ComputePointWithLoop);
 		else
 			m_pCurrentPointAlgorithm.reset(new ComputePoint);
+
+		return true;
+	}
+
+	bool ToggleJulia(olc::Key)
+	{
+		// Toggle julia state
+		julia = !julia;
 
 		return true;
 	}
@@ -555,6 +570,37 @@ public:
 		return false;
 	}
 
+	bool SelectFunction(olc::Key key)
+	{
+		switch (key)
+		{
+		case olc::M:
+			{
+				m_pCurrentStateAlgorithm.reset(new MandelComputeState);
+				z0Value = { 0,0 };
+				bailoutSquared = 4;
+			}
+			break;
+
+		case olc::B:
+			{
+				m_pCurrentStateAlgorithm.reset(new BurningShipComputeState);
+				z0Value = { 0,0 };
+				bailoutSquared = 4;
+			}
+		break;
+
+		case olc::G:
+			{
+				m_pCurrentStateAlgorithm.reset(new LogisticComputeState);
+				z0Value = { 0.1,0 };
+				bailoutSquared = 16;
+			}
+			break;
+		}
+
+		return true;
+	}
 	bool OnUserUpdate(float fElapsedTime) override
 	{
 		// Handle transform control
@@ -588,16 +634,13 @@ public:
 			}
 		}
 
-		if (GetKey(olc::M).bPressed || GetKey(olc::B).bPressed)
+		olc::vf2d pos = GetMousePos();
+		if (GetMouse(olc::Mouse::RIGHT).bPressed)
 		{
-			if (GetKey(olc::M).bPressed)
-				m_pCurrentStateAlgorithm.reset(new MandelComputeState);
-			else
-				m_pCurrentStateAlgorithm.reset(new BurningShipComputeState);
+			juliaSeed = tv.ScreenToWorld(pos);
 		}
 
-		olc::vf2d pos = GetMousePos();
-		if (GetMouse(0).bPressed || (GetMouse(0).bHeld && pos != prevMousPos))
+		if (GetMouse(olc::Mouse::LEFT).bPressed || (GetMouse(olc::Mouse::LEFT).bHeld && pos != prevMousPos))
 		{
 			// Calculate orbit for the selected point at the mouse
 			prevMousPos = pos;
@@ -615,7 +658,8 @@ public:
 			{
 				track.push_back({ (float)pz->zr, (float)pz->zi });
 				pz->Advance();
-				loops = pz->zr == pztail->zr && pz->zi == pztail->zi;
+				// loops = pz->zr == pztail->zr && pz->zi == pztail->zi;
+				loops = std::abs(pz->zr - pztail->zr) < 1e-6 && std::abs(pz->zi- pztail->zi) < 1e-6;
 				if (i & 0x1)
 					pztail->Advance();
 				i++;
@@ -627,7 +671,8 @@ public:
 				*pztail = *pz;
 				pztail->Advance();
 				loopLength = 1;
-				while (pz->zr != pztail->zr && pz->zi != pztail->zi)
+				//while (pz->zr != pztail->zr && pz->zi != pztail->zi)
+				while (!(std::abs(pz->zr - pztail->zr) < 1e-6 && std::abs(pz->zi - pztail->zi) < 1e-6))
 				{
 					loopLength++;
 					pztail->Advance();
@@ -662,7 +707,7 @@ public:
 		elapseBuffer.insert(elapsedTime);
 
 		// Render result to screen
-		effectiveColorizer->scale = nIterations;
+		// effectiveColorizer->scale = nIterations;
 
 		for (int y = 0; y < ScreenHeight(); y++)
 		{
@@ -685,7 +730,7 @@ public:
 		{
 			for (int i = 0; i < track.size() - 1; i++)
 			{
-				// Warning - it takes a long time to draw a line which is outside the window!
+				// Warning - it takes a long time to draw a line which is wholly or partially outside the window!
 				olc::vf2d screen1 = tv.WorldToScreen(track[i]);
 				olc::vf2d screen2 = tv.WorldToScreen(track[i + 1]);
 				// If both points are outside screen, don't draw the line
@@ -721,8 +766,10 @@ public:
 	olc::TransformedView tv;
 
 	IColorizer* effectiveColorizer;
+	IColorizer* basicColorizer;
 	ErikssonColorizer colorizer;
 	StripedColorizer stripedColorizer;
+	ColorUp colorUpColorizer;
 };
 
 const std::vector<FractalFramework::method_s> FractalFramework::Methods
@@ -786,6 +833,26 @@ const std::vector<FractalFramework::key_command_s> FractalFramework::KeyCommands
 		keyData(ESCAPE),
 		"Exit program",
 		&FractalFramework::ExitProgram
+	},
+	{
+		keyData(M),
+		"Mandelbrot function",
+		&FractalFramework::SelectFunction
+	},
+	{
+		keyData(B),
+		"Burning Ship function",
+		&FractalFramework::SelectFunction
+	},
+	{
+		keyData(G),
+		"Logistic function",
+		&FractalFramework::SelectFunction
+	},
+	{
+		keyData(J),
+		"Toggle Julia mode",
+		&FractalFramework::ToggleJulia
 	},
 };
 

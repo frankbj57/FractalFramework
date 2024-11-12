@@ -35,6 +35,9 @@
     <ClInclude Include="StripedColorizer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="InterpolatingColorizer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="build.sh" />

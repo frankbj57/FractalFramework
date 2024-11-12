@@ -143,6 +143,7 @@
   <ItemGroup>
     <ClInclude Include="ErikssonColorizer.h" />
     <ClInclude Include="IColorizer.h" />
+    <ClInclude Include="InterpolatingColorizer.h" />
     <ClInclude Include="olcPGEX_TransformedView.h" />
     <ClInclude Include="olcPixelGameEngine.h" />
     <ClInclude Include="StripedColorizer.h" />
