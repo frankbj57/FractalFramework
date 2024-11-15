@@ -193,7 +193,10 @@ public:
 	{
 		inline void Advance() override
 		{
-			zi = zr * zi * 2.0 + ci;
+			// zi = zr * zi * 2.0 + ci;
+			zi *= zr;
+			zi *= 2;
+			zi += ci;
 			zr = zr2 - zi2 + cr;
 
 			zr2 = zr * zr;
@@ -366,7 +369,14 @@ public:
 
 			for (x = pix_tl.x; x < pix_br.x; x++)
 			{
-				n = comPoint->ComputePointCount(x_pos, y_pos, z0Value.x, z0Value.y);
+				if (julia)
+				{
+					n = comPoint->ComputePointCount(juliaSeed.x, juliaSeed.y, x_pos, y_pos);
+				}
+				else
+				{
+					n = comPoint->ComputePointCount(x_pos, y_pos, z0Value.x, z0Value.y);
+				}
 
 				pFractal[y_offset + x] = n;
 				x_pos += x_scale;
@@ -396,7 +406,14 @@ public:
 
 				for (x = pix_tl.x; x < pix_br.x; x++)
 				{
-					n = comPoint->ComputePointCount(x_pos, y_pos, z0Value.x, z0Value.y);
+					if (julia)
+					{
+						n = comPoint->ComputePointCount(juliaSeed.x, juliaSeed.y, x_pos, y_pos);
+					}
+					else
+					{
+						n = comPoint->ComputePointCount(x_pos, y_pos, z0Value.x, z0Value.y);
+					}
 
 					pFractal[y_offset + x] = n;
 					x_pos += x_scale;
@@ -430,7 +447,14 @@ public:
 
 				for (x = pix_tl.x; x < pix_br.x; x++)
 				{
-					n = comPoint->ComputePointCount(x_pos, y_pos, z0Value.x, z0Value.y);
+					if (julia)
+					{
+						n = comPoint->ComputePointCount(juliaSeed.x, juliaSeed.y, x_pos, y_pos);
+					}
+					else
+					{
+						n = comPoint->ComputePointCount(x_pos, y_pos, z0Value.x, z0Value.y);
+					}
 
 					pFractal[y_offset + x] = n;
 					x_pos += x_scale;
@@ -635,7 +659,7 @@ public:
 		}
 
 		olc::vf2d pos = GetMousePos();
-		if (GetMouse(olc::Mouse::RIGHT).bPressed)
+		if (GetMouse(olc::Mouse::RIGHT).bPressed && !julia)
 		{
 			juliaSeed = tv.ScreenToWorld(pos);
 		}
