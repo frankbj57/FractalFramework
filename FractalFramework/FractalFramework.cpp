@@ -115,7 +115,7 @@ struct IComputePoint
 class FractalFramework : public olc::PixelGameEngine
 {
 public:
-	FractalFramework() : stripedColorizer(&colorizer)
+	FractalFramework() : stripedColorizer(&eColorizer)
 	{
 		sAppName = "Fractal Framework";
 	}
@@ -146,15 +146,15 @@ public:
 		// MS Specific - see std::aligned_alloc for others
 		// pFractal = (int*)_aligned_malloc(size_t(ScreenWidth()) * size_t(ScreenHeight()) * sizeof(int), 64);
 
-		colorizer.scale = nIterations;
+		eColorizer.scale = nIterations;
 
-		// effectiveColorizer = &colorizer;
+		// effectiveColorizer = &eColorizer;
 		colorUpColorizer.fromColor = olc::RED;
 		colorUpColorizer.toColor = olc::GREEN;
 		colorUpColorizer.fromValue = 1;
 		colorUpColorizer.toValue = 256;
 
-		basicColorizer = effectiveColorizer = &colorUpColorizer;
+		basicColorizer = &eColorizer;
 
 		// Original viewport should be x: 0 to 2, y: 0 to 1. Screencoordinates y are opposite
 		float xscale = ScreenWidth() / (2.5 + 4.0);
@@ -177,6 +177,9 @@ public:
 		{
 			std::cout << c.keyName << ":\t" << c.commandDescription << endl;
 		}
+
+		Colorizers.push_back(colorizer_s{ "Eriksson", &eColorizer });
+		Colorizers.push_back(colorizer_s{ "Color Up", &colorUpColorizer });
 
 		return true;
 	}
@@ -523,23 +526,23 @@ public:
 
 	static const std::vector<FractalFramework::key_command_s> KeyCommands;
 
+	struct colorizer_s
+	{
+		std::string description;
+		IColorizer * pColorizer;
+	};
+
+	std::vector<colorizer_s> Colorizers;
+
 	vector<olc::vf2d> track;
 	olc::vf2d prevMousPos;
 	int loopLength = 0;
+	int currentColorizer = 0;
 
 	bool ToggleStripes(olc::Key)
 	{
 		// Toggle striped
 		striped = !striped;
-		if (striped)
-		{
-			stripedColorizer.pCore = basicColorizer;
-			effectiveColorizer = &stripedColorizer;
-		}
-		else
-		{
-			effectiveColorizer = basicColorizer;
-		}
 
 		return true;
 	}
@@ -560,6 +563,22 @@ public:
 	{
 		// Toggle julia state
 		julia = !julia;
+
+		return true;
+	}
+
+	bool CycleColorizer(olc::Key)
+	{
+		if (Colorizers.size())
+		{
+			currentColorizer++;
+			if (currentColorizer >= Colorizers.size())
+			{
+				currentColorizer = 0;
+			}
+
+			basicColorizer = Colorizers[currentColorizer].pColorizer;
+		}
 
 		return true;
 	}
@@ -732,6 +751,12 @@ public:
 
 		// Render result to screen
 		// effectiveColorizer->scale = nIterations;
+		effectiveColorizer = basicColorizer;
+		if (striped)
+		{
+			stripedColorizer.pCore = effectiveColorizer;
+			effectiveColorizer = &stripedColorizer;
+		}
 
 		for (int y = 0; y < ScreenHeight(); y++)
 		{
@@ -791,7 +816,7 @@ public:
 
 	IColorizer* effectiveColorizer;
 	IColorizer* basicColorizer;
-	ErikssonColorizer colorizer;
+	ErikssonColorizer eColorizer;
 	StripedColorizer stripedColorizer;
 	ColorUp colorUpColorizer;
 };
@@ -830,7 +855,7 @@ const std::vector<FractalFramework::key_command_s> FractalFramework::KeyCommands
 {
 	{
 		keyData(S),
-		"Toggle striped colorizer",
+		"Toggle striped eColorizer",
 		&FractalFramework::ToggleStripes
 	},
 	{
@@ -878,6 +903,11 @@ const std::vector<FractalFramework::key_command_s> FractalFramework::KeyCommands
 		"Toggle Julia mode",
 		&FractalFramework::ToggleJulia
 	},
+	{
+		keyData(C),
+		"Cycle colorizers",
+		&FractalFramework::CycleColorizer
+	},
 };
 
 int main()
@@ -887,3 +917,4 @@ int main()
 		demo.Start();
 	return 0;
 }
+
