@@ -7,7 +7,7 @@ public:
 	olc::Pixel fromColor = olc::BLACK;
 	olc::Pixel toColor = olc::WHITE;
 	double fromValue = 0;
-	double toValue = scale;
+	double toValue = getScale();
 
 	virtual olc::Pixel ColorizePixel(int value) override
 	{

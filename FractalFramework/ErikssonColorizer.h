@@ -11,7 +11,7 @@ class ErikssonColorizer : public IColorizer
 public:
 	ErikssonColorizer() : pi(acosf(-1.0)), pithird(pi/3)
 	{
-		scale = 256.0;
+		setScale(256.0);
 	}
 
 	olc::Pixel ColorizePixel(int value)
@@ -22,7 +22,7 @@ public:
 	olc::Pixel ColorizePixel(float value)
 	{
 		// Thank you @Eriksonn - Wonderful Magic Fractal Oddball Man
-		float scaledAngle = 2 * pi * value / scale;
+		float scaledAngle = 2 * pi * value / getScale();
 
 		return olc::PixelF(0.5f * std::sin(scaledAngle) + 0.5f, 0.5f * sin(scaledAngle + 2*pithird) + 0.5f, 0.5f * sin(scaledAngle + 4*pithird) + 0.5f);
 	}

@@ -84,6 +84,7 @@
 #include "ErikssonColorizer.h"
 #include "StripedColorizer.h"
 #include "InterpolatingColorizer.h"
+#include "ShiftingColorizer.h"
 
 struct IComputeState
 {
@@ -115,7 +116,10 @@ struct IComputePoint
 class FractalFramework : public olc::PixelGameEngine
 {
 public:
-	FractalFramework() : stripedColorizer(&eColorizer)
+	FractalFramework() 
+		: 
+		stripedColorizer(&eColorizer),
+		shiftColorizer(&eColorizer)
 	{
 		sAppName = "Fractal Framework";
 	}
@@ -130,6 +134,10 @@ public:
 	bool julia = false;
 	bool striped = false;  // Use striped colorization
 	bool loopCheck = false;
+	bool shifting = false;
+	int shiftValue = 0;
+	float shiftSpeed = 50; // Values per second
+	float shiftTime = 0;
 
 	std::unique_ptr<IComputeState> m_pCurrentStateAlgorithm;
 	std::unique_ptr<IComputePoint> m_pCurrentPointAlgorithm;
@@ -146,7 +154,7 @@ public:
 		// MS Specific - see std::aligned_alloc for others
 		// pFractal = (int*)_aligned_malloc(size_t(ScreenWidth()) * size_t(ScreenHeight()) * sizeof(int), 64);
 
-		eColorizer.scale = nIterations;
+		eColorizer.setScale(nIterations);
 
 		// effectiveColorizer = &eColorizer;
 		colorUpColorizer.fromColor = olc::RED;
@@ -196,10 +204,7 @@ public:
 	{
 		inline void Advance() override
 		{
-			// zi = zr * zi * 2.0 + ci;
-			zi *= zr;
-			zi *= 2;
-			zi += ci;
+			zi = zr * zi * 2.0 + ci;
 			zr = zr2 - zi2 + cr;
 
 			zr2 = zr * zr;
@@ -559,6 +564,23 @@ public:
 		return true;
 	}
 
+	bool ToggleAnimateColors(olc::Key)
+	{
+		// Toggle shifting of colors
+		shifting = !shifting;
+		if (shifting)
+		{
+			shiftColorizer.setShift(0);
+			shiftTime = 0;
+		}
+		else
+		{
+			// Do nothing
+		}
+
+		return true;
+	}
+
 	bool ToggleJulia(olc::Key)
 	{
 		// Toggle julia state
@@ -758,6 +780,19 @@ public:
 			effectiveColorizer = &stripedColorizer;
 		}
 
+		if (shifting)
+		{
+			shiftTime += fElapsedTime;
+			while (shiftTime > (1.0 / shiftSpeed))
+			{
+				shiftColorizer.setShift(shiftColorizer.getShift()+1);
+				shiftTime -= (1.0 / shiftSpeed);
+			}
+
+			shiftColorizer.pCore = effectiveColorizer;
+			effectiveColorizer = &shiftColorizer;
+		}
+
 		for (int y = 0; y < ScreenHeight(); y++)
 		{
 			for (int x = 0; x < ScreenWidth(); x++)
@@ -819,6 +854,7 @@ public:
 	ErikssonColorizer eColorizer;
 	StripedColorizer stripedColorizer;
 	ColorUp colorUpColorizer;
+	ShiftingColorizer shiftColorizer;
 };
 
 const std::vector<FractalFramework::method_s> FractalFramework::Methods
@@ -907,6 +943,11 @@ const std::vector<FractalFramework::key_command_s> FractalFramework::KeyCommands
 		keyData(C),
 		"Cycle colorizers",
 		&FractalFramework::CycleColorizer
+	},
+	{
+		keyData(A),
+		"Toggle Animate colors",
+		&FractalFramework::ToggleAnimateColors
 	},
 };
 
