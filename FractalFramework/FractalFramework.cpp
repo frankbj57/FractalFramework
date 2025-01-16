@@ -125,7 +125,7 @@ public:
 	}
 
 	int* pFractal = nullptr;  // Result buffer - matches screen size
-	int nMode = Methods.size()-1;
+	int nMode = 2;
 	int nIterations = 256;  // Classic fractal maximum interation
 	double bailoutSquared = 4.0;  // Classic fractal bailout value, squared for easier calculations
 	olc::vd2d juliaSeed{ 1, 0 }; // Current constant for julia set calculations
@@ -865,23 +865,23 @@ const std::vector<FractalFramework::method_s> FractalFramework::Methods
 		&FractalFramework::CreateFractalOpenMP,
 		"OpenMP parallel for"
 	},
-#if defined(_MSC_VER)
 	{
 		olc::K2,
-		&FractalFramework::CreateFractalParallelization,
-		"parallel_for Method"
-	},
-#endif
-	{
-		olc::K3,
 		&FractalFramework::CreateFractalSingleThread,
 		"Single Thread Method"
 	},
 	{
-		olc::K4,
+		olc::K3,
 		&FractalFramework::CreateFractalCppForEachAlgorithm,
 		"C++17 for_each_n parallel implementation"
 	},
+#if defined(_MSC_VER)
+	{
+		olc::K4,
+		&FractalFramework::CreateFractalParallelization,
+		"parallel_for Method"
+	},
+#endif
 };
 
 #define keyData(k) olc::k, #k
