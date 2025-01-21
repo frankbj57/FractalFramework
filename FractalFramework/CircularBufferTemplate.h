@@ -64,7 +64,7 @@ void CircularBuffer<myType>::print() const
 {
 	for (int i = 0; i < size_; i++)
 	{
-		 cout << arrayPtr_[i] << endl;
+		 cout << arrayPtr_[(newestIndex_-i+size_) % size_] << endl;
 	}
 
 }
