@@ -148,7 +148,7 @@ public:
 public:
 	bool OnUserCreate() override
 	{
-		pFractal = new int[ScreenWidth() * ScreenHeight()]{ 0 };
+		pFractal = new int[ScreenWidth() * ScreenHeight()] { 0 };
 
 		// Using Vector extensions, align memory (not as necessary as it used to be)
 		// MS Specific - see std::aligned_alloc for others
@@ -165,14 +165,16 @@ public:
 		basicColorizer = &eColorizer;
 
 		// Original viewport should be x: 0 to 2, y: 0 to 1. Screencoordinates y are opposite
-		float xscale = ScreenWidth() / (2.5 + 4.0);
-		float yscale = ScreenHeight() / (2.5);
+		float xscale = ScreenWidth() / (4);
+		float yscale = ScreenHeight() / (2);
 		float scale = std::min(xscale, yscale);
 
 		tv.Initialise(
 			{ ScreenWidth(), ScreenHeight() },
 			{ scale, -scale });
-		tv.SetWorldOffset({ -2.5, 1.5 });
+		
+
+		tv.SetWorldOffset(-tv.ScreenToWorld({ (float) ScreenWidth()/2, (float) ScreenHeight()/2 }));
 
 		m_pCurrentStateAlgorithm.reset(new MandelComputeState);
 
@@ -508,7 +510,7 @@ public:
 		}
 	}
 
-	CircularBuffer<std::chrono::duration<double>> elapseBuffer = CircularBuffer<std::chrono::duration<double>>(5);
+	CircularBuffer<std::chrono::duration<double>> elapseBuffer = CircularBuffer<std::chrono::duration<double>>(40);
 
 	using CreateFractalFunction = void(const olc::vi2d& pix_tl, const olc::vi2d& pix_br, const olc::vd2d& frac_tl, const olc::vd2d& frac_br, const int iterations);
 
@@ -644,6 +646,7 @@ public:
 				m_pCurrentStateAlgorithm.reset(new MandelComputeState);
 				z0Value = { 0,0 };
 				bailoutSquared = 4;
+				elapseBuffer.clear();
 			}
 			break;
 
@@ -652,7 +655,8 @@ public:
 				m_pCurrentStateAlgorithm.reset(new BurningShipComputeState);
 				z0Value = { 0,0 };
 				bailoutSquared = 4;
-			}
+				elapseBuffer.clear();
+		}
 		break;
 
 		case olc::G:
@@ -660,12 +664,14 @@ public:
 				m_pCurrentStateAlgorithm.reset(new LogisticComputeState);
 				z0Value = { 0.1,0 };
 				bailoutSquared = 16;
-			}
+				elapseBuffer.clear();
+		}
 			break;
 		}
 
 		return true;
 	}
+
 	bool OnUserUpdate(float fElapsedTime) override
 	{
 		// Handle transform control
@@ -685,7 +691,11 @@ public:
 		{
 			if (GetKey(Methods[i].key).bPressed)
 			{
-				nMode = i;
+				if (nMode != i)
+				{
+					elapseBuffer.clear();
+					nMode = i;
+				}
 				break;
 			}
 		}
@@ -724,7 +734,7 @@ public:
 				track.push_back({ (float)pz->zr, (float)pz->zi });
 				pz->Advance();
 				// loops = pz->zr == pztail->zr && pz->zi == pztail->zi;
-				loops = std::abs(pz->zr - pztail->zr) < 1e-6 && std::abs(pz->zi- pztail->zi) < 1e-6;
+				loops = std::abs(pz->zr - pztail->zr) < 1e-6 && std::abs(pz->zi- pztail->zi) < 1e-12;
 				if (i & 0x1)
 					pztail->Advance();
 				i++;
@@ -954,7 +964,7 @@ const std::vector<FractalFramework::key_command_s> FractalFramework::KeyCommands
 int main()
 {
 	FractalFramework demo;
-	if (demo.Construct(1024, 1024, 1, 1, false, false))
+	if (demo.Construct(640, 480, 2, 2, false, false))
 		demo.Start();
 	return 0;
 }

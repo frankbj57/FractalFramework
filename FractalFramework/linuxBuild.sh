@@ -1,1 +1,1 @@
-g++ -fopenmp -lX11 -lGL -lpthread -lpng -lstdc++fs -std=c++17 -static -O3 -o FractalFramework FractalFramework.cpp
+g++  FractalFramework.cpp -fopenmp -lX11 -lGL -lpthread -lpng -lstdc++fs -std=c++17 -static -O3 -o FractalFramework

@@ -142,6 +142,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="CircularBufferTemplate.h" />
     <ClInclude Include="ErikssonColorizer.h" />
     <ClInclude Include="IColorizer.h" />
     <ClInclude Include="InterpolatingColorizer.h" />
