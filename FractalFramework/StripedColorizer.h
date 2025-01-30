@@ -1,11 +1,11 @@
 #pragma once
 #include "IColorizer.h"
 
-class StripedColorizer : public IColorizerDecorator
+class StripedColorizer : public ColorizerDecorator
 {
 public:
-	StripedColorizer(IColorizer* core) : IColorizerDecorator(core) {}
-	olc::Pixel ColorizePixel(int value) override 
+	StripedColorizer(IColorizer* pCore) : ColorizerDecorator(pCore) {}
+	olc::Pixel ColorizePixel(int value) const override 
 	{ 
 		if (value % 2 == 1)
 		{

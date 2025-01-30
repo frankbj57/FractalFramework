@@ -2,13 +2,13 @@
 #include "IColorizer.h"
 #include <cmath>
 
-struct ShiftingColorizer : public IColorizerDecorator
+struct ShiftingColorizer : public ColorizerDecorator
 {
 	int shift;
 	void setShift(int shift)
 	{
 		float mod = fmodf(shift, pCore->getScale());
-		this->shift = mod;
+		this->shift = (int) mod;
 	}
 
 	int getShift() const
@@ -16,8 +16,9 @@ struct ShiftingColorizer : public IColorizerDecorator
 		return shift;
 	}
 
-	ShiftingColorizer(IColorizer* core) : IColorizerDecorator(core) {}
-	olc::Pixel ColorizePixel(int value) override
+	ShiftingColorizer(IColorizer* pCore) : ColorizerDecorator(pCore), shift(0) {}
+
+	olc::Pixel ColorizePixel(int value) const override
 	{
 		int effValue = value + shift;
 		effValue = fmodf(effValue, pCore->getScale());

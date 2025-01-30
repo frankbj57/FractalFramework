@@ -100,6 +100,7 @@ struct IComputeState
 	}
 	virtual void Advance() = 0;
 	virtual IComputeState* Clone() = 0;
+	virtual ~IComputeState() {}
 };
 
 struct IComputePoint
@@ -136,7 +137,7 @@ public:
 	bool loopCheck = false;
 	bool shifting = false;
 	int shiftValue = 0;
-	float shiftSpeed = 50; // Values per second
+	float shiftSpeed = 8; // Values per second
 	float shiftTime = 0;
 
 	std::unique_ptr<IComputeState> m_pCurrentStateAlgorithm;
@@ -786,20 +787,20 @@ public:
 		effectiveColorizer = basicColorizer;
 		if (striped)
 		{
-			stripedColorizer.pCore = effectiveColorizer;
+			stripedColorizer.setCore(effectiveColorizer);
 			effectiveColorizer = &stripedColorizer;
 		}
 
 		if (shifting)
 		{
 			shiftTime += fElapsedTime;
-			while (shiftTime > (1.0 / shiftSpeed))
+			if (shiftTime > (1.0 / shiftSpeed))
 			{
 				shiftColorizer.setShift(shiftColorizer.getShift()+1);
-				shiftTime -= (1.0 / shiftSpeed);
+				shiftTime = fmodf(shiftTime, (1.0 / shiftSpeed));
 			}
 
-			shiftColorizer.pCore = effectiveColorizer;
+			shiftColorizer.setCore(effectiveColorizer);
 			effectiveColorizer = &shiftColorizer;
 		}
 

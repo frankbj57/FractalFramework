@@ -3,7 +3,7 @@
 #include <cmath>
 
 
-class ErikssonColorizer : public IColorizer
+class ErikssonColorizer : public Colorizer
 {
 	const float pi = 3.141593f;
 	const float pithird = pi / 3;
@@ -14,12 +14,12 @@ public:
 		setScale(256.0);
 	}
 
-	olc::Pixel ColorizePixel(int value)
+	olc::Pixel ColorizePixel(int value) const override
 	{
 		return ColorizePixel((float)value);
 	}
 
-	olc::Pixel ColorizePixel(float value)
+	olc::Pixel ColorizePixel(float value) const override
 	{
 		// Thank you @Eriksonn - Wonderful Magic Fractal Oddball Man
 		float scaledAngle = 2 * pi * value / getScale();
