@@ -129,7 +129,7 @@ public:
 	int nMode = 2;
 	int nIterations = 256;  // Classic fractal maximum interation
 	double bailoutSquared = 4.0;  // Classic fractal bailout value, squared for easier calculations
-	olc::vd2d juliaSeed{ 1, 0 }; // Current constant for julia set calculations
+	olc::vd2d juliaSeed{ -1, 0 }; // Current constant for julia set calculations
 	olc::vd2d z0Value{ 0,0 };   // Current startvalue if not julia calculation
 
 	bool julia = false;
@@ -623,6 +623,9 @@ public:
 				nIterations -= 64;
 			}
 			break;
+
+			default:
+				break;
 		}
 
 		if (nIterations < 64)
@@ -657,8 +660,8 @@ public:
 				z0Value = { 0,0 };
 				bailoutSquared = 4;
 				elapseBuffer.clear();
-		}
-		break;
+			}
+			break;
 
 		case olc::G:
 			{
@@ -666,7 +669,10 @@ public:
 				z0Value = { 0.1,0 };
 				bailoutSquared = 16;
 				elapseBuffer.clear();
-		}
+			}
+			break;
+
+		default:
 			break;
 		}
 
