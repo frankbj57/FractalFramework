@@ -395,6 +395,7 @@ public:
 		}
 	}
 #if defined(_MSC_VER)
+	// _MSC_VER is also defined for clang under VS (clang-cl)
 	// Using concurrency library parallelization
 	void CreateFractalParallelization(const olc::vi2d& pix_tl, const olc::vi2d& pix_br, const olc::vd2d& frac_tl, const olc::vd2d& frac_br, const int iterations)
 	{
@@ -847,16 +848,19 @@ public:
 		}
 
 		// Render UI
-		DrawString(0, 0, std::to_string(nMode + 1) + ") " + Methods[nMode].description, olc::WHITE, 3);
+		uint32_t scale = 1;
+		int32_t lineDistance = 10;
+
+		DrawString(0, 0, std::to_string(nMode + 1) + ") " + Methods[nMode].description, olc::WHITE, scale);
 
 		// DrawString(0, 30, "Time Taken: " + std::to_string(elapsedTime.count()) + "s", olc::WHITE, 3);
-		DrawString(0, 30, "Time Taken: " + std::to_string(elapseBuffer.meanValue().count()) + "s", olc::WHITE, 3);
-		DrawString(0, 60, "Iterations: " + std::to_string(m_pCurrentPointAlgorithm->maxIterations), olc::WHITE, 3);
+		DrawString(0, 1 * scale * lineDistance, "Time Taken: " + std::to_string(elapseBuffer.meanValue().count()) + "s", olc::WHITE, scale);
+		DrawString(0, 2 * scale * lineDistance, "Iterations: " + std::to_string(m_pCurrentPointAlgorithm->maxIterations), olc::WHITE, scale);
 		
 		if (track.size() > 1)
 		{
-			DrawString(0, 90, "Track length: " + std::to_string(track.size()), olc::WHITE, 3);
-			DrawString(0, 120, "Loop length: " + std::to_string(loopLength), olc::WHITE, 3);
+			DrawString(0, 3 * scale * lineDistance, "Track length: " + std::to_string(track.size()), olc::WHITE, scale);
+			DrawString(0, 4 * scale * lineDistance, "Loop length: " + std::to_string(loopLength), olc::WHITE, scale);
 		}
 
 		// Exit program when returning false
@@ -896,7 +900,12 @@ const std::vector<FractalFramework::method_s> FractalFramework::Methods
 	{
 		olc::K4,
 		&FractalFramework::CreateFractalParallelization,
-		"parallel_for Method"
+#ifdef __clang_version__
+		"parallel_for Method (clang "  __clang_version__ ")"
+#else
+		"parallel_for Method (MSC)"  
+#endif
+
 	},
 #endif
 };
