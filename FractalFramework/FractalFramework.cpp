@@ -140,6 +140,8 @@ public:
 	float shiftSpeed = 8; // Values per second
 	float shiftTime = 0;
 
+	bool recalculate = true;
+
 	std::unique_ptr<IComputeState> m_pCurrentStateAlgorithm;
 	std::unique_ptr<IComputePoint> m_pCurrentPointAlgorithm;
 
@@ -191,6 +193,8 @@ public:
 
 		Colorizers.push_back(colorizer_s{ "Eriksson", &eColorizer });
 		Colorizers.push_back(colorizer_s{ "Color Up", &colorUpColorizer });
+
+		recalculate = true;
 
 		return true;
 	}
@@ -565,6 +569,8 @@ public:
 		else
 			m_pCurrentPointAlgorithm.reset(new ComputePoint);
 
+		recalculate |= true;
+
 		return true;
 	}
 
@@ -589,6 +595,8 @@ public:
 	{
 		// Toggle julia state
 		julia = !julia;
+
+		recalculate |= true;
 
 		return true;
 	}
@@ -634,6 +642,8 @@ public:
 			nIterations = 64;
 		}
 
+		recalculate |= true;
+
 		return true;
 	}
 
@@ -652,7 +662,8 @@ public:
 				z0Value = { 0,0 };
 				bailoutSquared = 4;
 				elapseBuffer.clear();
-			}
+				recalculate |= true;
+		}
 			break;
 
 		case olc::B:
@@ -661,6 +672,7 @@ public:
 				z0Value = { 0,0 };
 				bailoutSquared = 4;
 				elapseBuffer.clear();
+				recalculate |= true;
 			}
 			break;
 
@@ -670,6 +682,7 @@ public:
 				z0Value = { 0.1,0 };
 				bailoutSquared = 16;
 				elapseBuffer.clear();
+				recalculate |= true;
 			}
 			break;
 
@@ -682,8 +695,14 @@ public:
 
 	bool OnUserUpdate(float fElapsedTime) override
 	{
+		auto oldOffSet = tv.GetWorldOffset();
+		auto oldScale = tv.GetWorldScale();
+
 		// Handle transform control
 		tv.HandlePanAndZoom(olc::Mouse::MIDDLE, 0.2, true, true);
+
+		if (oldOffSet != tv.GetWorldOffset() || oldScale != tv.GetWorldScale())
+			recalculate |= true;
 
 		olc::vi2d pix_tl = { 0,0 };
 		olc::vi2d pix_br = { ScreenWidth(), ScreenHeight() };
@@ -703,6 +722,7 @@ public:
 				{
 					elapseBuffer.clear();
 					nMode = i;
+					recalculate |= true;
 				}
 				break;
 			}
@@ -742,7 +762,7 @@ public:
 				track.push_back({ (float)pz->zr, (float)pz->zi });
 				pz->Advance();
 				// loops = pz->zr == pztail->zr && pz->zi == pztail->zi;
-				loops = std::abs(pz->zr - pztail->zr) < 1e-6 && std::abs(pz->zi- pztail->zi) < 1e-12;
+				loops = std::abs(pz->zr - pztail->zr) < 1e-6 && std::abs(pz->zi- pztail->zi) < 1e-6;
 				if (i & 0x1)
 					pztail->Advance();
 				i++;
@@ -777,17 +797,22 @@ public:
 		m_pCurrentPointAlgorithm->maxIterations = nIterations;
 		m_pCurrentPointAlgorithm->bailOutSquare = bailoutSquared;
 
-		// START TIMING
-		auto tp1 = std::chrono::high_resolution_clock::now();
+		if (recalculate)
+		{
+			// START TIMING
+			auto tp1 = std::chrono::high_resolution_clock::now();
 
-		// Do the computation
-		// Select the right method from the Create Methods table
-		(this->*Methods[nMode].pCreateMethod)(pix_tl, pix_br, frac_tl, frac_br, nIterations);
+			// Do the computation
+			// Select the right method from the Create Methods table
+			(this->*Methods[nMode].pCreateMethod)(pix_tl, pix_br, frac_tl, frac_br, nIterations);
 
-		// STOP TIMING
-		auto tp2 = std::chrono::high_resolution_clock::now();
-		std::chrono::duration<double> elapsedTime = tp2 - tp1;
-		elapseBuffer.insert(elapsedTime);
+			// STOP TIMING
+			auto tp2 = std::chrono::high_resolution_clock::now();
+			std::chrono::duration<double> elapsedTime = tp2 - tp1;
+			elapseBuffer.insert(elapsedTime);
+
+			recalculate = false;
+		}
 
 		// Render result to screen
 		// effectiveColorizer->scale = nIterations;
@@ -980,7 +1005,7 @@ const std::vector<FractalFramework::key_command_s> FractalFramework::KeyCommands
 int main()
 {
 	FractalFramework demo;
-	if (demo.Construct(640, 480, 2, 2, false, false))
+	if (demo.Construct(1280, 960, 1, 1, false, false))
 		demo.Start();
 	return 0;
 }
