@@ -556,7 +556,6 @@ public:
 		calculationCompleted = true;
 	}
 
-	CircularBuffer<std::chrono::duration<double>> elapseBuffer = CircularBuffer<std::chrono::duration<double>>(40);
 	std::chrono::duration<double> elapsedTime;
 
 	using CreateFractalFunction = void(const olc::vi2d& pix_tl, const olc::vi2d& pix_br, const olc::vd2d& frac_tl, const olc::vd2d& frac_br, const int iterations);
@@ -702,7 +701,6 @@ public:
 				m_pCurrentStateAlgorithm.reset(new MandelComputeState);
 				z0Value = { 0,0 };
 				bailoutSquared = 4;
-				elapseBuffer.clear();
 				recalculate |= true;
 		}
 			break;
@@ -712,7 +710,6 @@ public:
 				m_pCurrentStateAlgorithm.reset(new BurningShipComputeState);
 				z0Value = { 0,0 };
 				bailoutSquared = 4;
-				elapseBuffer.clear();
 				recalculate |= true;
 			}
 			break;
@@ -722,7 +719,6 @@ public:
 				m_pCurrentStateAlgorithm.reset(new LogisticComputeState);
 				z0Value = { 0.5,0 };
 				bailoutSquared = 16;
-				elapseBuffer.clear();
 				recalculate |= true;
 			}
 			break;
@@ -761,7 +757,6 @@ public:
 			{
 				if (nMode != i)
 				{
-					elapseBuffer.clear();
 					nMode = i;
 					recalculate |= true;
 				}
