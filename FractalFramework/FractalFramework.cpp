@@ -80,6 +80,8 @@
 #include <execution>
 #include <numeric>
 
+#include <cassert>
+
 #include "CircularBufferTemplate.h"
 #include "ErikssonColorizer.h"
 #include "StripedColorizer.h"
@@ -203,6 +205,16 @@ public:
 	{
 		// Clean up memory
 		// _aligned_free(pFractal);
+		if (currentHelperThread)
+		{
+			// Stop the current calculation
+			stopCalculation = true;
+
+			currentHelperThread.get()->join();
+		}
+
+		currentHelperThread.release();
+
 		delete pFractal;
 		return true;
 	}
@@ -287,6 +299,9 @@ public:
 		inline IComputePoint* Clone() override
 		{
 			ComputePoint* pR = new ComputePoint;
+
+			assert(z);
+
 			pR->z.reset(z->Clone());
 			pR->maxIterations = maxIterations;
 			pR->bailOutSquare = bailOutSquare;
@@ -345,6 +360,9 @@ public:
 		inline IComputePoint* Clone() override
 		{
 			ComputePointWithLoop* pR = new ComputePointWithLoop;
+
+			assert(z);
+
 			pR->z.reset(z->Clone());
 			pR->maxIterations = maxIterations;
 			pR->bailOutSquare = bailOutSquare;
@@ -461,7 +479,7 @@ public:
 				// We need a copy for each parallel task, possibly down to each y coordinate
 				std::unique_ptr<IComputePoint> comPoint(m_pCurrentPointAlgorithm->Clone());
 
-				for (x = pix_tl.x; x < pix_br.x; x++)
+				for (x = pix_tl.x; x < pix_br.x &&!stopCalculation; x++)
 				{
 					if (julia)
 					{
@@ -516,7 +534,30 @@ public:
 		}
 	}
 
+	std::atomic<bool> stopCalculation;
+	std::atomic<bool> calculationCompleted;
+
+	std::unique_ptr<std::thread> currentHelperThread;
+
+	void ThreadFunction(const olc::vi2d& pix_tl, const olc::vi2d& pix_br, const olc::vd2d& frac_tl, const olc::vd2d& frac_br, const int iterations)
+	{
+
+		// START TIMING
+		auto tp1 = std::chrono::high_resolution_clock::now();
+
+		// Do the computation
+		// Select the right method from the Create Methods table
+		(this->*Methods[nMode].pCreateMethod)(pix_tl, pix_br, frac_tl, frac_br, nIterations);
+
+		// STOP TIMING
+		auto tp2 = std::chrono::high_resolution_clock::now();
+		elapsedTime = tp2 - tp1;
+
+		calculationCompleted = true;
+	}
+
 	CircularBuffer<std::chrono::duration<double>> elapseBuffer = CircularBuffer<std::chrono::duration<double>>(40);
+	std::chrono::duration<double> elapsedTime;
 
 	using CreateFractalFunction = void(const olc::vi2d& pix_tl, const olc::vi2d& pix_br, const olc::vd2d& frac_tl, const olc::vd2d& frac_br, const int iterations);
 
@@ -679,7 +720,7 @@ public:
 		case olc::G:
 			{
 				m_pCurrentStateAlgorithm.reset(new LogisticComputeState);
-				z0Value = { 0.1,0 };
+				z0Value = { 0.5,0 };
 				bailoutSquared = 16;
 				elapseBuffer.clear();
 				recalculate |= true;
@@ -788,29 +829,31 @@ public:
 			loopLength = 0;
 		}
 
-		if (loopCheck)
-			m_pCurrentPointAlgorithm.reset(new ComputePointWithLoop);
-		else
-			m_pCurrentPointAlgorithm.reset(new ComputePoint);
-
-		m_pCurrentPointAlgorithm->z.reset(m_pCurrentStateAlgorithm->Clone());
-		m_pCurrentPointAlgorithm->maxIterations = nIterations;
-		m_pCurrentPointAlgorithm->bailOutSquare = bailoutSquared;
-
 		if (recalculate)
 		{
-			// START TIMING
-			auto tp1 = std::chrono::high_resolution_clock::now();
+			if (currentHelperThread)
+			{
+				// Stop the current calculation
+				stopCalculation = true;
 
-			// Do the computation
-			// Select the right method from the Create Methods table
-			(this->*Methods[nMode].pCreateMethod)(pix_tl, pix_br, frac_tl, frac_br, nIterations);
+				currentHelperThread.get()->join();
+			}
 
-			// STOP TIMING
-			auto tp2 = std::chrono::high_resolution_clock::now();
-			std::chrono::duration<double> elapsedTime = tp2 - tp1;
-			elapseBuffer.insert(elapsedTime);
+			// Safe area, where globals can be changed
+			stopCalculation = false;
+			calculationCompleted = false;
+			if (loopCheck)
+				m_pCurrentPointAlgorithm.reset(new ComputePointWithLoop);
+			else
+				m_pCurrentPointAlgorithm.reset(new ComputePoint);
 
+			m_pCurrentPointAlgorithm->z.reset(m_pCurrentStateAlgorithm->Clone());
+			m_pCurrentPointAlgorithm->maxIterations = nIterations;
+			m_pCurrentPointAlgorithm->bailOutSquare = bailoutSquared;
+
+
+			currentHelperThread.reset(new std::thread { &FractalFramework::ThreadFunction, this, pix_tl, pix_br, frac_tl, frac_br, nIterations });
+			
 			recalculate = false;
 		}
 
@@ -878,8 +921,8 @@ public:
 
 		DrawString(0, 0, std::to_string(nMode + 1) + ") " + Methods[nMode].description, olc::WHITE, scale);
 
-		// DrawString(0, 30, "Time Taken: " + std::to_string(elapsedTime.count()) + "s", olc::WHITE, 3);
-		DrawString(0, 1 * scale * lineDistance, "Time Taken: " + std::to_string(elapseBuffer.meanValue().count()) + "s", olc::WHITE, scale);
+		DrawString(0, 1 * scale * lineDistance, "Time Taken: " + std::to_string(elapsedTime.count()) + "s", olc::WHITE, scale);
+		// DrawString(0, 1 * scale * lineDistance, "Time Taken: " + std::to_string(elapseBuffer.meanValue().count()) + "s", olc::WHITE, scale);
 		DrawString(0, 2 * scale * lineDistance, "Iterations: " + std::to_string(m_pCurrentPointAlgorithm->maxIterations), olc::WHITE, scale);
 		
 		if (track.size() > 1)
