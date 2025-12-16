@@ -2,14 +2,13 @@
 #include "IColorizer.h"
 #include <cmath>
 
-
 class ErikssonColorizer : public Colorizer
 {
-	const float pi = 3.141593f;
-	const float pithird = pi / 3;
+	static const float pi;
+	static const float pithird;
 
 public:
-	ErikssonColorizer() : pi(acosf(-1.0)), pithird(pi/3)
+	ErikssonColorizer()
 	{
 		setScale(256.0);
 	}
@@ -29,3 +28,9 @@ public:
 
 private:
 };
+
+// const float ErikssonColorizer::pi = 3.141593f;
+// const float ErikssonColorizer::pithird = pi / 3;
+const float ErikssonColorizer::pi = acos(-1);
+const float ErikssonColorizer::pithird = pi / 3;
+
