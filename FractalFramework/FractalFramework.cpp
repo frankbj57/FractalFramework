@@ -400,7 +400,7 @@ public:
 			// We need a copy for each parallel task, possibly down to each y coordinate
 			std::unique_ptr<IComputePoint> comPoint(m_pCurrentPointAlgorithm->Clone());
 
-			for (x = pix_tl.x; x < pix_br.x; x++)
+			for (x = pix_tl.x; x < pix_br.x && !stopCalculation; x++)
 			{
 				if (julia)
 				{
@@ -438,7 +438,7 @@ public:
 				// We need a copy for each parallel task, possibly down to each y coordinate
 				std::unique_ptr<IComputePoint> comPoint(m_pCurrentPointAlgorithm->Clone());
 
-				for (x = pix_tl.x; x < pix_br.x; x++)
+				for (x = pix_tl.x; x < pix_br.x && !stopCalculation; x++)
 				{
 					if (julia)
 					{
@@ -508,7 +508,7 @@ public:
 		// We only need one for the whole picture
 		std::unique_ptr<IComputePoint> comPoint(m_pCurrentPointAlgorithm->Clone());
 
-		for (y = pix_tl.y; y < pix_br.y; y++)
+		for (y = pix_tl.y; y < pix_br.y && !stopCalculation; y++)
 		{
 			double x_pos = frac_tl.x;
 			const double y_pos = frac_tl.y + y * y_scale;
@@ -517,7 +517,7 @@ public:
 
 			int x, n;
 
-			for (x = pix_tl.x; x < pix_br.x; x++)
+			for (x = pix_tl.x; x < pix_br.x && !stopCalculation; x++)
 			{
 				if (julia)
 				{
