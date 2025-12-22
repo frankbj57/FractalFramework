@@ -31,6 +31,6 @@ private:
 
 // const float ErikssonColorizer::pi = 3.141593f;
 // const float ErikssonColorizer::pithird = pi / 3;
-const float ErikssonColorizer::pi = acos(-1);
+const float ErikssonColorizer::pi = acos(-1.0f);
 const float ErikssonColorizer::pithird = pi / 3;
 

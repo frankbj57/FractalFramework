@@ -44,6 +44,9 @@
     <ClInclude Include="CircularBufferTemplate.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="OptimizedEriksson.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="build.sh" />

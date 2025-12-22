@@ -210,6 +210,7 @@
       <AssemblerOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">All</AssemblerOutput>
       <AssemblerOutput Condition="'$(Configuration)|$(Platform)'=='clang Release|x64'">All</AssemblerOutput>
     </ClCompile>
+    <ClInclude Include="OptimizedEriksson.h" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CircularBufferTemplate.h" />

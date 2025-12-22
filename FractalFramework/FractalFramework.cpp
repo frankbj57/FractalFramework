@@ -84,6 +84,7 @@
 
 #include "CircularBufferTemplate.h"
 #include "ErikssonColorizer.h"
+#include "OptimizedEriksson.h"
 #include "StripedColorizer.h"
 #include "InterpolatingColorizer.h"
 #include "ShiftingColorizer.h"
@@ -160,6 +161,7 @@ public:
 		// pFractal = (int*)_aligned_malloc(size_t(ScreenWidth()) * size_t(ScreenHeight()) * sizeof(int), 64);
 
 		eColorizer.setScale(nIterations);
+		oeColorizer.setScale(nIterations);
 
 		// effectiveColorizer = &eColorizer;
 		colorUpColorizer.fromColor = olc::RED;
@@ -167,7 +169,7 @@ public:
 		colorUpColorizer.fromValue = 1;
 		colorUpColorizer.toValue = 256;
 
-		basicColorizer = &eColorizer;
+		basicColorizer = &oeColorizer;
 
 		// Original viewport should be x: 0 to 2, y: 0 to 1. Screencoordinates y are opposite
 		float xscale = ScreenWidth() / (4);
@@ -193,6 +195,7 @@ public:
 			std::cout << c.keyName << ":\t" << c.commandDescription << endl;
 		}
 
+		Colorizers.push_back(colorizer_s{ "Optimized Eriksson", &oeColorizer });
 		Colorizers.push_back(colorizer_s{ "Eriksson", &eColorizer });
 		Colorizers.push_back(colorizer_s{ "Color Up", &colorUpColorizer });
 
@@ -936,6 +939,7 @@ public:
 	IColorizer* effectiveColorizer;
 	IColorizer* basicColorizer;
 	ErikssonColorizer eColorizer;
+	OptimizedErikssonColorizer oeColorizer;
 	StripedColorizer stripedColorizer;
 	ColorUp colorUpColorizer;
 	ShiftingColorizer shiftColorizer;
