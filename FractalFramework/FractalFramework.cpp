@@ -152,6 +152,28 @@ public:
 
 
 public:
+	bool ResetView(olc::Key)
+	{
+		// Scale is number of pixels per 1(one) world unit
+		// We want the complete circle with radius 2 to be visible, as this
+		// contains the complete Mandelbrot set
+		// Goes from upper left (-2, 1.5) to lower right (1.0, -1.5) in Mandelbrot world
+		// Get the smallest scale to fit it all
+		float scale =
+			std::min<float>(ScreenWidth() / (3.0), ScreenHeight() / (3.0));
+		// World y and screen y goes in opposite directions, therefore the negative scale for y
+		tv.Initialise(
+			{ ScreenWidth(), ScreenHeight() },
+			{ scale, -scale });
+		// Recalculate world offset
+		tv.SetWorldOffset({ 0,0 });
+		tv.SetWorldOffset(-(tv.ScreenToWorld(olc::vf2d{ (float)ScreenWidth() / 2, (float)ScreenHeight() / 2 })));
+
+		recalculate |= true;
+
+		return true;
+	}
+
 	bool OnUserCreate() override
 	{
 		pFractal = new int[ScreenWidth() * ScreenHeight()] { 0 };
@@ -171,17 +193,7 @@ public:
 
 		basicColorizer = &oeColorizer;
 
-		// Original viewport should be x: 0 to 2, y: 0 to 1. Screencoordinates y are opposite
-		float xscale = ScreenWidth() / (4);
-		float yscale = ScreenHeight() / (2);
-		float scale = std::min(xscale, yscale);
-
-		tv.Initialise(
-			{ ScreenWidth(), ScreenHeight() },
-			{ scale, -scale });
-		
-
-		tv.SetWorldOffset(-tv.ScreenToWorld({ (float) ScreenWidth()/2, (float) ScreenHeight()/2 }));
+		ResetView(olc::Key::R);
 
 		m_pCurrentStateAlgorithm.reset(new MandelComputeState);
 
@@ -744,14 +756,6 @@ public:
 		if (oldOffSet != tv.GetWorldOffset() || oldScale != tv.GetWorldScale())
 			recalculate |= true;
 
-		olc::vi2d pix_tl = { 0,0 };
-		olc::vi2d pix_br = { ScreenWidth(), ScreenHeight() };
-		olc::vd2d frac_tl = { -2.0, -1.0 };
-		olc::vd2d frac_br = { 1.0, 1.0 };
-
-		frac_tl = tv.ScreenToWorld(pix_tl);
-		frac_br = tv.ScreenToWorld(pix_br);
-
 		// Handle User Input
 		// Determine overall algorithm
 		for (size_t i = 0; i < Methods.size(); i++)
@@ -776,56 +780,13 @@ public:
 			}
 		}
 
-		olc::vf2d pos = GetMousePos();
-		if (GetMouse(olc::Mouse::RIGHT).bPressed && !julia)
-		{
-			juliaSeed = tv.ScreenToWorld(pos);
-		}
+		olc::vi2d pix_tl = { 0,0 };
+		olc::vi2d pix_br = { ScreenWidth(), ScreenHeight() };
+		olc::vd2d frac_tl = { -2.0, -1.0 };
+		olc::vd2d frac_br = { 1.0, 1.0 };
 
-		if (GetMouse(olc::Mouse::LEFT).bPressed || (GetMouse(olc::Mouse::LEFT).bHeld && pos != prevMousPos))
-		{
-			// Calculate orbit for the selected point at the mouse
-			prevMousPos = pos;
-			track.clear();
-			pos = tv.ScreenToWorld(pos);
-			std::unique_ptr<IComputeState> pz(m_pCurrentStateAlgorithm->Clone());
-
-			pz->Initialize(pos.x, pos.y, z0Value.x, z0Value.y);
-
-			std::unique_ptr<IComputeState> pztail(pz->Clone());
-			pz->Advance();
-			int i = 1;
-			bool loops = false;
-			while ((pz->zr2 + pz->zi2) < bailoutSquared && i < nIterations && !loops)
-			{
-				track.push_back({ (float)pz->zr, (float)pz->zi });
-				pz->Advance();
-				// loops = pz->zr == pztail->zr && pz->zi == pztail->zi;
-				loops = std::abs(pz->zr - pztail->zr) < 1e-6 && std::abs(pz->zi- pztail->zi) < 1e-6;
-				if (i & 0x1)
-					pztail->Advance();
-				i++;
-			}
-			loopLength = 0;
-			if (loops)
-			{
-				// Keep z fixed
-				*pztail = *pz;
-				pztail->Advance();
-				loopLength = 1;
-				//while (pz->zr != pztail->zr && pz->zi != pztail->zi)
-				while (!(std::abs(pz->zr - pztail->zr) < 1e-6 && std::abs(pz->zi - pztail->zi) < 1e-6))
-				{
-					loopLength++;
-					pztail->Advance();
-				}
-			}
-		}
-		else if (GetMouse(0).bReleased)
-		{
-			track.clear();
-			loopLength = 0;
-		}
+		frac_tl = tv.ScreenToWorld(pix_tl);
+		frac_br = tv.ScreenToWorld(pix_br);
 
 		if (recalculate)
 		{
@@ -892,6 +853,57 @@ public:
 						effectiveColorizer->ColorizePixel(i));
 				}
 			}
+		}
+
+		olc::vf2d pos = GetMousePos();
+		if (GetMouse(olc::Mouse::RIGHT).bPressed && !julia)
+		{
+			juliaSeed = tv.ScreenToWorld(pos);
+		}
+
+		if (GetMouse(olc::Mouse::LEFT).bPressed || (GetMouse(olc::Mouse::LEFT).bHeld && pos != prevMousPos))
+		{
+			// Calculate orbit for the selected point at the mouse
+			prevMousPos = pos;
+			track.clear();
+			pos = tv.ScreenToWorld(pos);
+			std::unique_ptr<IComputeState> pz(m_pCurrentStateAlgorithm->Clone());
+
+			pz->Initialize(pos.x, pos.y, z0Value.x, z0Value.y);
+
+			std::unique_ptr<IComputeState> pztail(pz->Clone());
+			pz->Advance();
+			int i = 1;
+			bool loops = false;
+			while ((pz->zr2 + pz->zi2) < bailoutSquared && i < nIterations && !loops)
+			{
+				track.push_back({ (float)pz->zr, (float)pz->zi });
+				pz->Advance();
+				// loops = pz->zr == pztail->zr && pz->zi == pztail->zi;
+				loops = std::abs(pz->zr - pztail->zr) < 1e-6 && std::abs(pz->zi - pztail->zi) < 1e-6;
+				if (i & 0x1)
+					pztail->Advance();
+				i++;
+			}
+			loopLength = 0;
+			if (loops)
+			{
+				// Keep z fixed
+				*pztail = *pz;
+				pztail->Advance();
+				loopLength = 1;
+				//while (pz->zr != pztail->zr && pz->zi != pztail->zi)
+				while (!(std::abs(pz->zr - pztail->zr) < 1e-6 && std::abs(pz->zi - pztail->zi) < 1e-6))
+				{
+					loopLength++;
+					pztail->Advance();
+				}
+			}
+		}
+		else if (GetMouse(0).bReleased)
+		{
+			track.clear();
+			loopLength = 0;
 		}
 
 		if (track.size() > 1)
@@ -1041,6 +1053,11 @@ const std::vector<FractalFramework::key_command_s> FractalFramework::KeyCommands
 		keyData(A),
 		"Toggle Animate colors",
 		&FractalFramework::ToggleAnimateColors
+	},
+	{
+		keyData(R),
+		"Reset View",
+		&FractalFramework::ResetView
 	},
 };
 
