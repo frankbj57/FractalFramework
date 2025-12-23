@@ -26,9 +26,6 @@
     <ClInclude Include="IColorizer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="olcPGEX_TransformedView.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="olcPixelGameEngine.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -45,6 +42,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="OptimizedEriksson.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="olcPGEX_TransformedViewTemplate.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

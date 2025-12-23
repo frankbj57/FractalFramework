@@ -68,8 +68,8 @@
 #define OLC_PGE_APPLICATION
 #include "olcPixelGameEngine.h"
 
-#define OLC_PGEX_TRANSFORMEDVIEW
-#include "olcPGEX_TransformedView.h"
+#define OLC_PGEX_TRANSFORMEDVIEW_IMPLEMENTATION
+#include "olcPGEX_TransformedViewTemplate.h"
 
 
 #if defined(_MSC_VER)
@@ -664,13 +664,13 @@ public:
 	{
 		switch (key)
 		{
-			case olc::UP:
+		case olc::Key::UP:
 			{
 				nIterations += 64;
 			}
 			break;
 
-			case olc::DOWN:
+		case olc::Key::DOWN:
 			{
 				nIterations -= 64;
 			}
@@ -699,7 +699,7 @@ public:
 	{
 		switch (key)
 		{
-		case olc::M:
+		case olc::Key::M:
 			{
 				m_pCurrentStateAlgorithm.reset(new MandelComputeState);
 				z0Value = { 0,0 };
@@ -708,7 +708,7 @@ public:
 		}
 			break;
 
-		case olc::B:
+		case olc::Key::B:
 			{
 				m_pCurrentStateAlgorithm.reset(new BurningShipComputeState);
 				z0Value = { 0,0 };
@@ -717,7 +717,7 @@ public:
 			}
 			break;
 
-		case olc::G:
+		case olc::Key::G:
 			{
 				m_pCurrentStateAlgorithm.reset(new LogisticComputeState);
 				z0Value = { 0.5,0 };
@@ -949,23 +949,23 @@ const std::vector<FractalFramework::method_s> FractalFramework::Methods
 =
 {
 	{
-		olc::K1,
+		olc::Key::K1,
 		&FractalFramework::CreateFractalOpenMP,
 		"OpenMP parallel for"
 	},
 	{
-		olc::K2,
+		olc::Key::K2,
 		&FractalFramework::CreateFractalSingleThread,
 		"Single Thread Method"
 	},
 	{
-		olc::K3,
+		olc::Key::K3,
 		&FractalFramework::CreateFractalCppForEachAlgorithm,
 		"C++17 for_each_n parallel implementation"
 	},
 #if defined(_MSC_VER)
 	{
-		olc::K4,
+		olc::Key::K4,
 		&FractalFramework::CreateFractalParallelization,
 #ifdef __clang_version__
 		"parallel_for Method (clang "  __clang_version__ ")"
@@ -977,7 +977,7 @@ const std::vector<FractalFramework::method_s> FractalFramework::Methods
 #endif
 };
 
-#define keyData(k) olc::k, #k
+#define keyData(k) olc::Key::k, #k
 
 const std::vector<FractalFramework::key_command_s> FractalFramework::KeyCommands
 =

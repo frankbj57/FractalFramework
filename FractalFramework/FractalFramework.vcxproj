@@ -168,7 +168,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <OpenMPSupport>true</OpenMPSupport>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <AssemblerOutput>All</AssemblerOutput>
     </ClCompile>
     <Link>
@@ -210,6 +210,7 @@
       <AssemblerOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">All</AssemblerOutput>
       <AssemblerOutput Condition="'$(Configuration)|$(Platform)'=='clang Release|x64'">All</AssemblerOutput>
     </ClCompile>
+    <ClInclude Include="olcPGEX_TransformedViewTemplate.h" />
     <ClInclude Include="OptimizedEriksson.h" />
   </ItemGroup>
   <ItemGroup>
@@ -217,7 +218,6 @@
     <ClInclude Include="ErikssonColorizer.h" />
     <ClInclude Include="IColorizer.h" />
     <ClInclude Include="InterpolatingColorizer.h" />
-    <ClInclude Include="olcPGEX_TransformedView.h" />
     <ClInclude Include="olcPixelGameEngine.h" />
     <ClInclude Include="ShiftingColorizer.h" />
     <ClInclude Include="StripedColorizer.h" />
