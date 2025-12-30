@@ -51,4 +51,7 @@
   <ItemGroup>
     <None Include="build.sh" />
   </ItemGroup>
+  <ItemGroup>
+    <Text Include="Tasklist.txt" />
+  </ItemGroup>
 </Project>

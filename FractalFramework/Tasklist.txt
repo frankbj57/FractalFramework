@@ -1,0 +1,16 @@
+Get output text from PgeMandelbrotParallel
+
+Do experiments with internal coloring (inside the black)
+
+Streamlining colorizers and decorators for them
+
+Parallelize rendering
+
+Experiment with PGE GUI for setting parameters
+
+Consolidate fractal systems with algorithm, starting area and other values in a struct/class
+
+Experiment with PGE console
+
+
+
