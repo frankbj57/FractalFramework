@@ -203,7 +203,7 @@ public:
 
 		for (const auto &c : KeyCommands)
 		{
-			std::cout << c.keyName << ":\t" << c.commandDescription << endl;
+			std::cout << c.keyName << ":\t" << c.commandDescription << std::endl;
 		}
 
 		Colorizers.push_back(colorizer_s{ "Optimized Eriksson", &oeColorizer });
@@ -577,7 +577,7 @@ public:
 	struct method_s {
 		olc::Key key;
 		CreateFractalFunction FractalFramework::* pCreateMethod;
-		string description;
+		std::string description;
 	};
 
 	static const std::vector<method_s> Methods;
@@ -601,7 +601,7 @@ public:
 
 	std::vector<colorizer_s> Colorizers;
 
-	vector<olc::vf2d> track;
+	std::vector<olc::vf2d> track;
 	olc::vf2d prevMousPos;
 	int loopLength = 0;
 	size_t currentColorizer = 0;
