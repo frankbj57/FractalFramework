@@ -82,7 +82,6 @@
 
 #include <cassert>
 
-#include "CircularBufferTemplate.h"
 #include "ErikssonColorizer.h"
 #include "OptimizedEriksson.h"
 #include "StripedColorizer.h"
