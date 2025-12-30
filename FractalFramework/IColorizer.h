@@ -11,7 +11,7 @@ public:
 	virtual float getScale() const = 0;
 
 private:
-	float scale;
+
 };
 
 // Define a base class, it's abstract
@@ -21,7 +21,7 @@ public:
 	virtual void setScale(float scale) { this->scale = scale; }
 	virtual float getScale() const { return scale; }
 
-private:
+protected:
 	float scale;
 };
 
@@ -41,14 +41,14 @@ class ColorizerDecorator : public IColorizerDecorator
 public:
 	ColorizerDecorator(IColorizer* pCore) : pCore(pCore) {}
 
-	virtual olc::Pixel ColorizePixel(int value) const { return pCore->ColorizePixel(value); }
-	virtual olc::Pixel ColorizePixel(float value) const { return pCore->ColorizePixel(value); }
+	virtual olc::Pixel ColorizePixel(int value) const override { return pCore->ColorizePixel(value); }
+	virtual olc::Pixel ColorizePixel(float value) const override { return pCore->ColorizePixel(value); }
 
 	void setScale(float scale) override { pCore->setScale(scale); }
 	float getScale() const override { return pCore->getScale(); }
 
-	virtual IColorizer* getCore() const { return pCore; }
-	virtual void setCore(IColorizer* pCore) { this->pCore = pCore; }
+	virtual IColorizer* getCore() const override { return pCore; }
+	virtual void setCore(IColorizer* pCore) override { this->pCore = pCore; }
 
 protected:
 	IColorizer* pCore;

@@ -129,7 +129,7 @@ public:
 	}
 
 	int* pFractal = nullptr;  // Result buffer - matches screen size
-	int nMode = 2;
+	size_t nMode = 2;
 	int nIterations = 256;  // Classic fractal maximum interation
 	double bailoutSquared = 4.0;  // Classic fractal bailout value, squared for easier calculations
 	olc::vd2d juliaSeed{ -1, 0 }; // Current constant for julia set calculations
@@ -391,7 +391,7 @@ public:
 	};
 
 	// New parallel method, using OpenMP
-	void CreateFractalOpenMP(const olc::vi2d& pix_tl, const olc::vi2d& pix_br, const olc::vd2d& frac_tl, const olc::vd2d& frac_br, const int iterations)
+	void CreateFractalOpenMP(const olc::vi2d& pix_tl, const olc::vi2d& pix_br, const olc::vd2d& frac_tl, const olc::vd2d& frac_br, const int /* iterations */)
 	{
 		const double x_scale = (frac_br.x - frac_tl.x) / (double(pix_br.x) - double(pix_tl.x));
 		const double y_scale = (frac_br.y - frac_tl.y) / (double(pix_br.y) - double(pix_tl.y));
@@ -434,7 +434,7 @@ public:
 #if defined(_MSC_VER)
 	// _MSC_VER is also defined for clang under VS (clang-cl)
 	// Using concurrency library parallelization
-	void CreateFractalParallelization(const olc::vi2d& pix_tl, const olc::vi2d& pix_br, const olc::vd2d& frac_tl, const olc::vd2d& frac_br, const int iterations)
+	void CreateFractalParallelization(const olc::vi2d& pix_tl, const olc::vi2d& pix_br, const olc::vd2d& frac_tl, const olc::vd2d& frac_br, const int /*iterations*/)
 	{
 		const double x_scale = (frac_br.x - frac_tl.x) / (double(pix_br.x) - double(pix_tl.x));
 		const double y_scale = (frac_br.y - frac_tl.y) / (double(pix_br.y) - double(pix_tl.y));
@@ -472,7 +472,7 @@ public:
 #endif
 
 	// Using built C++17 parallelization
-	void CreateFractalCppForEachAlgorithm(const olc::vi2d& pix_tl, const olc::vi2d& pix_br, const olc::vd2d& frac_tl, const olc::vd2d& frac_br, const int iterations)
+	void CreateFractalCppForEachAlgorithm(const olc::vi2d& pix_tl, const olc::vi2d& pix_br, const olc::vd2d& frac_tl, const olc::vd2d& frac_br, const int /*iterations*/)
 	{
 		const double x_scale = (frac_br.x - frac_tl.x) / (double(pix_br.x) - double(pix_tl.x));
 		const double y_scale = (frac_br.y - frac_tl.y) / (double(pix_br.y) - double(pix_tl.y));
@@ -512,7 +512,7 @@ public:
 	}
 
 	// Using single thread
-	void CreateFractalSingleThread(const olc::vi2d& pix_tl, const olc::vi2d& pix_br, const olc::vd2d& frac_tl, const olc::vd2d& frac_br, const int iterations)
+	void CreateFractalSingleThread(const olc::vi2d& pix_tl, const olc::vi2d& pix_br, const olc::vd2d& frac_tl, const olc::vd2d& frac_br, const int /*iterations*/)
 	{
 		const double x_scale = (frac_br.x - frac_tl.x) / (double(pix_br.x) - double(pix_tl.x));
 		const double y_scale = (frac_br.y - frac_tl.y) / (double(pix_br.y) - double(pix_tl.y));
@@ -554,7 +554,7 @@ public:
 
 	std::unique_ptr<std::thread> currentHelperThread;
 
-	void ThreadFunction(const olc::vi2d& pix_tl, const olc::vi2d& pix_br, const olc::vd2d& frac_tl, const olc::vd2d& frac_br, const int iterations)
+	void ThreadFunction(const olc::vi2d& pix_tl, const olc::vi2d& pix_br, const olc::vd2d& frac_tl, const olc::vd2d& frac_br, const int /*iterations*/)
 	{
 
 		// START TIMING
@@ -605,7 +605,7 @@ public:
 	vector<olc::vf2d> track;
 	olc::vf2d prevMousPos;
 	int loopLength = 0;
-	int currentColorizer = 0;
+	size_t currentColorizer = 0;
 
 	bool ToggleStripes(olc::Key)
 	{
@@ -908,7 +908,7 @@ public:
 
 		if (track.size() > 1)
 		{
-			for (int i = 0; i < track.size() - 1; i++)
+			for (size_t i = 0; i < track.size() - 1; i++)
 			{
 				// Warning - it takes a long time to draw a line which is wholly or partially outside the window!
 				olc::vf2d screen1 = tv.WorldToScreen(track[i]);
