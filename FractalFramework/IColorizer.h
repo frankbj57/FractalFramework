@@ -22,7 +22,7 @@ public:
 	virtual float getScale() const { return scale; }
 
 protected:
-	float scale;
+	float scale = 256;
 };
 
 // Declare an interface for colorizer decorators

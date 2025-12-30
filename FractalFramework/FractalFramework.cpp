@@ -147,9 +147,6 @@ public:
 	std::unique_ptr<IComputeState> m_pCurrentStateAlgorithm;
 	std::unique_ptr<IComputePoint> m_pCurrentPointAlgorithm;
 
-
-
-
 public:
 	bool ResetView(olc::Key)
 	{
@@ -184,13 +181,16 @@ public:
 		eColorizer.setScale((float) nIterations);
 		oeColorizer.setScale((float) nIterations);
 
-		// effectiveColorizer = &eColorizer;
 		colorUpColorizer.fromColor = olc::RED;
 		colorUpColorizer.toColor = olc::GREEN;
 		colorUpColorizer.fromValue = 1;
 		colorUpColorizer.toValue = 256;
 
-		basicColorizer = &oeColorizer;
+		Colorizers.push_back(colorizer_s{ "Optimized Eriksson", &oeColorizer });
+		Colorizers.push_back(colorizer_s{ "Eriksson", &eColorizer });
+		Colorizers.push_back(colorizer_s{ "Color Up", &colorUpColorizer });
+
+		basicColorizer = Colorizers[currentColorizer].pColorizer;
 
 		ResetView(olc::Key::R);
 
@@ -205,10 +205,6 @@ public:
 		{
 			std::cout << c.keyName << ":\t" << c.commandDescription << std::endl;
 		}
-
-		Colorizers.push_back(colorizer_s{ "Optimized Eriksson", &oeColorizer });
-		Colorizers.push_back(colorizer_s{ "Eriksson", &eColorizer });
-		Colorizers.push_back(colorizer_s{ "Color Up", &colorUpColorizer });
 
 		recalculate = true;
 
@@ -570,7 +566,7 @@ public:
 		calculationCompleted = true;
 	}
 
-	std::chrono::duration<double> elapsedTime;
+	std::chrono::duration<double> elapsedTime = std::chrono::duration<double>();
 
 	using CreateFractalFunction = void(const olc::vi2d& pix_tl, const olc::vi2d& pix_br, const olc::vd2d& frac_tl, const olc::vd2d& frac_br, const int iterations);
 
@@ -817,7 +813,7 @@ public:
 
 		// Render result to screen
 		// effectiveColorizer->scale = nIterations;
-		effectiveColorizer = basicColorizer;
+		IColorizer * effectiveColorizer = basicColorizer;
 		if (striped)
 		{
 			stripedColorizer.setCore(effectiveColorizer);
@@ -947,8 +943,7 @@ public:
 
 	olc::TransformedViewD tv;
 
-	IColorizer* effectiveColorizer;
-	IColorizer* basicColorizer;
+	IColorizer* basicColorizer = nullptr;
 	ErikssonColorizer eColorizer;
 	OptimizedErikssonColorizer oeColorizer;
 	StripedColorizer stripedColorizer;
