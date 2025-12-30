@@ -12,5 +12,7 @@ Consolidate fractal systems with algorithm, starting area and other values in a 
 
 Experiment with PGE console
 
+Try VS 2026, make a branch for it
+
 
 
