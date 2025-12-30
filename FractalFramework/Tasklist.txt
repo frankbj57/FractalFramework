@@ -1,6 +1,7 @@
 Get output text from PgeMandelbrotParallel
 
 Do experiments with internal coloring (inside the black)
+	https://www.sekinoworld.com/fractal/coloring.htm
 
 Streamlining colorizers and decorators for them
 
@@ -12,7 +13,11 @@ Consolidate fractal systems with algorithm, starting area and other values in a 
 
 Experiment with PGE console
 
-Try VS 2026, make a branch for it
+Try VS 2026, make a branch for it - OK, merged back to main, so VS2022 is more or less abandoned
+
+Use transformed view to show track
+
+
 
 
 

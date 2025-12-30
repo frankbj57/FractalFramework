@@ -906,17 +906,15 @@ public:
 			for (size_t i = 0; i < track.size() - 1; i++)
 			{
 				// Warning - it takes a long time to draw a line which is wholly or partially outside the window!
-				olc::vf2d screen1 = tv.WorldToScreen(track[i]);
-				olc::vf2d screen2 = tv.WorldToScreen(track[i + 1]);
 				// If both points are outside screen, don't draw the line
-				if ((screen1.x < 0 || screen1.x >= ScreenWidth() || screen1.y < 0 || screen1.y > ScreenHeight())
-					&&
-					(screen2.x < 0 || screen2.x >= ScreenWidth() || screen2.y < 0 || screen2.y > ScreenHeight()))
+				if (!tv.IsPointVisible(track[i]) && !tv.IsPointVisible(track[i + 1]))
 				{
 					// Don't do anything
 				}
 				else
-					DrawLine(screen1, screen2);
+				{
+					tv.DrawLine(track[i], track[i + 1]);
+				}
 			}
 		}
 
