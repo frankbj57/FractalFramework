@@ -946,7 +946,7 @@ public:
 	}
 
 
-	olc::TransformedView tv;
+	olc::TransformedViewD tv;
 
 	IColorizer* effectiveColorizer;
 	IColorizer* basicColorizer;
