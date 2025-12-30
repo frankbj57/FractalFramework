@@ -18,7 +18,7 @@ private:
 class Colorizer : public IColorizer
 {
 public:
-	virtual void setScale(float scale) { this->scale = scale; }
+	virtual void setScale(float scale_) { this->scale = scale_; }
 	virtual float getScale() const { return scale; }
 
 protected:
@@ -48,7 +48,7 @@ public:
 	float getScale() const override { return pCore->getScale(); }
 
 	virtual IColorizer* getCore() const override { return pCore; }
-	virtual void setCore(IColorizer* pCore) override { this->pCore = pCore; }
+	virtual void setCore(IColorizer* pCore_) override { this->pCore = pCore_; }
 
 protected:
 	IColorizer* pCore;

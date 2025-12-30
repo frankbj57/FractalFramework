@@ -159,8 +159,8 @@ public:
 		// contains the complete Mandelbrot set
 		// Goes from upper left (-2, 1.5) to lower right (1.0, -1.5) in Mandelbrot world
 		// Get the smallest scale to fit it all
-		float scale =
-			std::min<float>(ScreenWidth() / (3.0), ScreenHeight() / (3.0));
+		double scale =
+			std::min<double>(ScreenWidth() / (3.0), ScreenHeight() / (3.0));
 		// World y and screen y goes in opposite directions, therefore the negative scale for y
 		tv.Initialise(
 			{ ScreenWidth(), ScreenHeight() },
@@ -182,8 +182,8 @@ public:
 		// MS Specific - see std::aligned_alloc for others
 		// pFractal = (int*)_aligned_malloc(size_t(ScreenWidth()) * size_t(ScreenHeight()) * sizeof(int), 64);
 
-		eColorizer.setScale(nIterations);
-		oeColorizer.setScale(nIterations);
+		eColorizer.setScale((float) nIterations);
+		oeColorizer.setScale((float) nIterations);
 
 		// effectiveColorizer = &eColorizer;
 		colorUpColorizer.fromColor = olc::RED;
@@ -831,7 +831,7 @@ public:
 			if (shiftTime > (1.0 / shiftSpeed))
 			{
 				shiftColorizer.setShift(shiftColorizer.getShift()+1);
-				shiftTime = fmodf(shiftTime, (1.0 / shiftSpeed));
+				shiftTime = fmodf(shiftTime, (1.0f / shiftSpeed));
 			}
 
 			shiftColorizer.setCore(effectiveColorizer);
