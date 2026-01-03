@@ -116,6 +116,8 @@ struct IComputePoint
 	virtual ~IComputePoint() {}
 };
 
+const double loopEpsilon = 1e-9;
+
 class FractalFramework : public olc::PixelGameEngine
 {
 public:
@@ -338,9 +340,10 @@ public:
 			while ((z->zr2 + z->zi2) < bailOutSquare && n < maxIterations && !loops)
 			{
 				z->Advance();
-				loops = z->zr == ztail->zr && z->zi == ztail->zi;
 				if (n & 0x1)
 					ztail->Advance();
+				// loops = z->zr == ztail->zr && z->zi == ztail->zi;
+				loops = std::abs(z->zr - ztail->zr) < loopEpsilon && std::abs(z->zi - ztail->zi) < loopEpsilon;
 				n++;
 			}
 
@@ -350,7 +353,9 @@ public:
 				*ztail = *z;
 				z->Advance();
 				int loop = 1;
-				while (z->zr != ztail->zr || z->zi != ztail->zi)
+				// while (z->zr != ztail->zr || z->zi != ztail->zi)
+				// When zooming very deep, calculations are not exact, so check again for maximum
+				while (!(std::abs(z->zr - ztail->zr) < loopEpsilon && std::abs(z->zi - ztail->zi) < loopEpsilon) && loop < maxIterations)
 				{
 					z->Advance();
 					loop++;
@@ -874,10 +879,10 @@ public:
 			{
 				track.push_back({ (float)pz->zr, (float)pz->zi });
 				pz->Advance();
-				// loops = pz->zr == pztail->zr && pz->zi == pztail->zi;
-				loops = std::abs(pz->zr - pztail->zr) < 1e-6 && std::abs(pz->zi - pztail->zi) < 1e-6;
 				if (i & 0x1)
 					pztail->Advance();
+				// loops = pz->zr == pztail->zr && pz->zi == pztail->zi;
+				loops = std::abs(pz->zr - pztail->zr) < loopEpsilon && std::abs(pz->zi - pztail->zi) < loopEpsilon;
 				i++;
 			}
 			loopLength = 0;
@@ -888,7 +893,7 @@ public:
 				pztail->Advance();
 				loopLength = 1;
 				//while (pz->zr != pztail->zr && pz->zi != pztail->zi)
-				while (!(std::abs(pz->zr - pztail->zr) < 1e-6 && std::abs(pz->zi - pztail->zi) < 1e-6))
+				while (!(std::abs(pz->zr - pztail->zr) < loopEpsilon && std::abs(pz->zi - pztail->zi) < loopEpsilon) && loopLength < nIterations)
 				{
 					loopLength++;
 					pztail->Advance();

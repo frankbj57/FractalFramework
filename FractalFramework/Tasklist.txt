@@ -15,7 +15,7 @@ Experiment with PGE console
 
 Try VS 2026, make a branch for it - OK, merged back to main, so VS2022 is more or less abandoned
 
-Use transformed view to show track
+Use transformed view to show track - OK
 
 
 
