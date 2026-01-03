@@ -38,13 +38,13 @@
     <ClInclude Include="ShiftingColorizer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="CircularBufferTemplate.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="OptimizedEriksson.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="olcPGEX_TransformedViewTemplate.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="olcPGEX_QuickGUI.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

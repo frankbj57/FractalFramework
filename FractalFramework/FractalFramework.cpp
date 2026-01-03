@@ -71,6 +71,8 @@
 #define OLC_PGEX_TRANSFORMEDVIEW_IMPLEMENTATION
 #include "olcPGEX_TransformedViewTemplate.h"
 
+#define OLC_PGEX_QUICKGUI
+#include "olcPGEX_QuickGUI.h"
 
 #if defined(_MSC_VER)
 #include <ppl.h>
@@ -149,6 +151,14 @@ public:
 	std::unique_ptr<IComputeState> m_pCurrentStateAlgorithm;
 	std::unique_ptr<IComputePoint> m_pCurrentPointAlgorithm;
 
+	// GUI elements
+	olc::QuickGUI::Manager guiManager;
+
+	olc::QuickGUI::Label* guiIterationLabel = nullptr;
+	olc::QuickGUI::Slider* guiIterationSlider = nullptr;
+	olc::QuickGUI::TextBox* guiIterationTextBox = nullptr;
+
+
 public:
 	bool ResetView(olc::Key)
 	{
@@ -209,6 +219,13 @@ public:
 		}
 
 		recalculate = true;
+
+		// GUI elements
+		guiIterationLabel = new olc::QuickGUI::Label(guiManager, "Iterations", { 10.0f, ScreenHeight() - 28.f }, { 100.0f, 16.0f });
+		guiIterationSlider = new olc::QuickGUI::Slider(guiManager,
+													   { 120.0f, ScreenHeight() - 20.f }, { 360.0f, ScreenHeight() - 20.f }, 64, 2560, 256);
+		guiIterationTextBox = new olc::QuickGUI::TextBox(guiManager,
+														std::to_string(nIterations), { 370.0f, ScreenHeight() - 28.f }, { 100.0f, 16.0f });
 
 		return true;
 	}
@@ -756,6 +773,10 @@ public:
 		if (oldOffSet != tv.GetWorldOffset() || oldScale != tv.GetWorldScale())
 			recalculate |= true;
 
+		// We must update the manager at some point each frame. Values of controls
+		// are only valid AFTER this call to update()
+		guiManager.Update(this);
+
 		// Handle User Input
 		// Determine overall algorithm
 		for (size_t i = 0; i < Methods.size(); i++)
@@ -923,7 +944,10 @@ public:
 			}
 		}
 
-		// Render UI
+		// Render UI and GUI
+
+		guiManager.Draw(this);
+
 		uint32_t scale = 1;
 		int32_t lineDistance = 10;
 
