@@ -146,6 +146,8 @@ public:
 	float shiftSpeed = 8; // Values per second
 	float shiftTime = 0;
 
+	bool bShowGui = true;
+
 	bool recalculate = true;
 
 	std::unique_ptr<IComputeState> m_pCurrentStateAlgorithm;
@@ -156,7 +158,7 @@ public:
 
 	olc::QuickGUI::Label* guiIterationLabel = nullptr;
 	olc::QuickGUI::Slider* guiIterationSlider = nullptr;
-	olc::QuickGUI::TextBox* guiIterationTextBox = nullptr;
+	olc::QuickGUI::Label* guiIterationValue = nullptr;
 
 
 public:
@@ -198,6 +200,8 @@ public:
 		colorUpColorizer.fromValue = 1;
 		colorUpColorizer.toValue = 256;
 
+		currentColorizer = 0;
+
 		Colorizers.push_back(colorizer_s{ "Optimized Eriksson", &oeColorizer });
 		Colorizers.push_back(colorizer_s{ "Eriksson", &eColorizer });
 		Colorizers.push_back(colorizer_s{ "Color Up", &colorUpColorizer });
@@ -223,8 +227,8 @@ public:
 		// GUI elements
 		guiIterationLabel = new olc::QuickGUI::Label(guiManager, "Iterations", { 10.0f, ScreenHeight() - 28.f }, { 100.0f, 16.0f });
 		guiIterationSlider = new olc::QuickGUI::Slider(guiManager,
-													   { 120.0f, ScreenHeight() - 20.f }, { 360.0f, ScreenHeight() - 20.f }, 64, 2560, 256);
-		guiIterationTextBox = new olc::QuickGUI::TextBox(guiManager,
+													   { 120.0f, ScreenHeight() - 20.f }, { 360.0f, ScreenHeight() - 20.f }, 64, 256*20, 256);
+		guiIterationValue = new olc::QuickGUI::Label(guiManager,
 														std::to_string(nIterations), { 370.0f, ScreenHeight() - 28.f }, { 100.0f, 16.0f });
 
 		return true;
@@ -614,7 +618,7 @@ public:
 	struct colorizer_s
 	{
 		std::string description;
-		IColorizer * pColorizer;
+		IColorizer* pColorizer;
 	};
 
 	std::vector<colorizer_s> Colorizers;
@@ -691,17 +695,26 @@ public:
 
 	bool AdjustIterations(olc::Key key)
 	{
+		int delta = 64;
+		if (GetKey(olc::Key::SHIFT).bPressed || GetKey(olc::Key::SHIFT).bHeld)
+		{
+			if (GetKey(olc::Key::CTRL).bPressed || GetKey(olc::Key::CTRL).bHeld)
+				delta = 1;
+			else
+				delta = 10;
+		}
+
 		switch (key)
 		{
 		case olc::Key::UP:
 			{
-				nIterations += 64;
+				nIterations += delta;
 			}
 			break;
 
 		case olc::Key::DOWN:
 			{
-				nIterations -= 64;
+				nIterations -= delta;
 			}
 			break;
 
@@ -722,6 +735,13 @@ public:
 	bool ExitProgram(olc::Key)
 	{
 		return false;
+	}
+
+	bool ToggleGui(olc::Key)
+	{
+		bShowGui = !bShowGui;
+
+		return true;
 	}
 
 	bool SelectFunction(olc::Key key)
@@ -773,9 +793,20 @@ public:
 		if (oldOffSet != tv.GetWorldOffset() || oldScale != tv.GetWorldScale())
 			recalculate |= true;
 
-		// We must update the manager at some point each frame. Values of controls
-		// are only valid AFTER this call to update()
-		guiManager.Update(this);
+		if (bShowGui)
+		{
+			// We must update the manager at some point each frame. Values of controls
+			// are only valid AFTER this call to update()
+			guiManager.Update(this);
+
+			if (guiIterationSlider->fValue != nIterations)
+			{
+				nIterations = guiIterationSlider->fValue;
+				recalculate = true;
+			}
+
+			guiIterationValue->sText = std::to_string(nIterations);
+		}
 
 		// Handle User Input
 		// Determine overall algorithm
@@ -945,8 +976,13 @@ public:
 		}
 
 		// Render UI and GUI
+		guiIterationSlider->fValue = nIterations;
+		guiIterationValue->sText = std::to_string(nIterations);
 
-		guiManager.Draw(this);
+		if (bShowGui)
+		{
+			guiManager.Draw(this);
+		}
 
 		uint32_t scale = 1;
 		int32_t lineDistance = 10;
@@ -1027,12 +1063,12 @@ const std::vector<FractalFramework::key_command_s> FractalFramework::KeyCommands
 	},
 	{
 		keyData(UP),
-		"Increase maximum interation",
+		"Increase maximum interation (SHIFT and CTRL modifies)",
 		&FractalFramework::AdjustIterations
 	},
 	{
 		keyData(DOWN),
-		"Increase maximum interation",
+		"Decrease maximum interation (SHIFT and CTRL modifies)",
 		&FractalFramework::AdjustIterations
 	},
 	{
@@ -1079,6 +1115,11 @@ const std::vector<FractalFramework::key_command_s> FractalFramework::KeyCommands
 		keyData(R),
 		"Reset View",
 		&FractalFramework::ResetView
+	},
+	{
+		keyData(U),
+		"Toggle GUI",
+		&FractalFramework::ToggleGui
 	},
 };
 
