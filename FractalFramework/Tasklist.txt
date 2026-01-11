@@ -7,7 +7,7 @@ Streamlining colorizers and decorators for them
 
 Parallelize rendering
 
-Experiment with PGE GUI for setting parameters
+Experiment with PGE GUI for setting parameters - OK, Iterations
 
 Consolidate fractal systems with algorithm, starting area and other values in a struct/class
 
@@ -16,6 +16,8 @@ Experiment with PGE console
 Try VS 2026, make a branch for it - OK, merged back to main, so VS2022 is more or less abandoned
 
 Use transformed view to show track - OK
+
+Clean up parallel algorithms
 
 
 

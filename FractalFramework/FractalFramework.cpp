@@ -148,6 +148,8 @@ public:
 
 	bool bShowGui = true;
 
+	bool calculateConvergence = false;
+
 	bool recalculate = true;
 
 	std::unique_ptr<IComputeState> m_pCurrentStateAlgorithm;
@@ -352,7 +354,7 @@ public:
 		inline int ComputePointCount(double x, double y, double initr = 0.0, double initi = 0.0) override
 		{
 			int n = 0;
-				
+
 			z->Initialize(x, y, initr, initi);
 
 			std::unique_ptr<IComputeState> ztail(z->Clone());
@@ -407,6 +409,63 @@ public:
 		}
 
 		~ComputePointWithLoop() override
+		{
+		}
+	};
+
+
+	struct ComputePointWithConvergence : public IComputePoint
+	{
+		inline int ComputePointCount(double x, double y, double initr = 0.0, double initi = 0.0) override
+		{
+			int n = 0;
+
+			z->Initialize(x, y, initr, initi);
+
+			std::unique_ptr<IComputeState> ztail(z->Clone());
+
+			bool loops = false;
+			while ((z->zr2 + z->zi2) < bailOutSquare && n < maxIterations && !loops)
+			{
+				z->Advance();
+				if (n & 0x1)
+					ztail->Advance();
+				// loops = z->zr == ztail->zr && z->zi == ztail->zi;
+				loops = std::abs(z->zr - ztail->zr) < loopEpsilon && std::abs(z->zi - ztail->zi) < loopEpsilon;
+				n++;
+			}
+
+			if (loops)
+			{
+				// We are looping, calculate convergence time
+				// Since zTail is moving half the speed of z, convergence time is half the count
+				// For now, merge interation count and convergence count
+				return maxIterations + n/2;
+			}
+			else if (n >= maxIterations)
+			{
+				return maxIterations;
+			}
+			else
+			{
+				return n;
+			}
+		}
+
+		inline IComputePoint* Clone() override
+		{
+			ComputePointWithConvergence* pR = new ComputePointWithConvergence();
+
+			assert(z);
+
+			pR->z.reset(z->Clone());
+			pR->maxIterations = maxIterations;
+			pR->bailOutSquare = bailOutSquare;
+
+			return pR;
+		}
+
+		~ComputePointWithConvergence() override
 		{
 		}
 	};
@@ -640,10 +699,16 @@ public:
 	{
 		// Toggle loopcheck
 		loopCheck = !loopCheck;
-		if (loopCheck)
-			m_pCurrentPointAlgorithm.reset(new ComputePointWithLoop);
-		else
-			m_pCurrentPointAlgorithm.reset(new ComputePoint);
+
+		recalculate |= true;
+
+		return true;
+	}
+
+	bool ToggleInsideConvergence(olc::Key)
+	{
+		// Toggle loopcheck
+		calculateConvergence = !calculateConvergence;
 
 		recalculate |= true;
 
@@ -853,7 +918,11 @@ public:
 			// Safe area, where globals can be changed
 			stopCalculation = false;
 			calculationCompleted = false;
-			if (loopCheck)
+			if (calculateConvergence)
+			{
+				m_pCurrentPointAlgorithm.reset(new ComputePointWithConvergence);
+			}
+			else if (loopCheck)
 				m_pCurrentPointAlgorithm.reset(new ComputePointWithLoop);
 			else
 				m_pCurrentPointAlgorithm.reset(new ComputePoint);
@@ -895,9 +964,13 @@ public:
 			for (int x = 0; x < ScreenWidth(); x++)
 			{
 				int i = pFractal[y * ScreenWidth() + x];
-				if (i == nIterations)
+				if (i >= nIterations)
 				{
-					Draw(x, y, olc::BLACK);
+					if (i == nIterations)
+						Draw(x, y, olc::BLACK);
+					else
+						Draw(x, y,
+							 effectiveColorizer->ColorizePixel(i-nIterations));
 				}
 				else
 				{
@@ -920,11 +993,22 @@ public:
 			track.clear();
 			pos = tv.ScreenToWorld(pos);
 			std::unique_ptr<IComputeState> pz(m_pCurrentStateAlgorithm->Clone());
+			std::unique_ptr<IComputeState> pztail;
+			if (julia)
+			{
+				pz->Initialize(juliaSeed.x, juliaSeed.y, pos.x, pos.y);
+				pztail.reset(pz->Clone());
+				track.push_back({ (float) pz->zr, (float) pz->zi });
+				pz->Advance();
+			}
+			else
+			{
+				pz->Initialize(pos.x, pos.y, z0Value.x, z0Value.y);
+				pztail.reset(pz->Clone());
+				pz->Advance();
+				track.push_back({ (float) pz->zr, (float) pz->zi });
+			}
 
-			pz->Initialize(pos.x, pos.y, z0Value.x, z0Value.y);
-
-			std::unique_ptr<IComputeState> pztail(pz->Clone());
-			pz->Advance();
 			int i = 1;
 			bool loops = false;
 			while ((pz->zr2 + pz->zi2) < bailoutSquared && i < nIterations && !loops)
@@ -964,11 +1048,11 @@ public:
 			{
 				// Warning - it takes a long time to draw a line which is wholly or partially outside the window!
 				// If both points are outside screen, don't draw the line
-				if (!tv.IsPointVisible(track[i]) && !tv.IsPointVisible(track[i + 1]))
-				{
-					// Don't do anything
-				}
-				else
+				//if (!tv.IsPointVisible(track[i]) && !tv.IsPointVisible(track[i + 1]))
+				//{
+				//	// Don't do anything
+				//}
+				//else
 				{
 					tv.DrawLine(track[i], track[i + 1]);
 				}
@@ -1060,6 +1144,11 @@ const std::vector<FractalFramework::key_command_s> FractalFramework::KeyCommands
 		keyData(L),
 		"Toggle loop detection",
 		&FractalFramework::ToggleLoopDetection
+	},
+	{
+		keyData(I),
+		"Calculate internal convergence",
+		&FractalFramework::ToggleInsideConvergence
 	},
 	{
 		keyData(UP),
