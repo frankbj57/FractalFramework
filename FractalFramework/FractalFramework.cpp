@@ -74,12 +74,27 @@
 #define OLC_PGEX_QUICKGUI
 #include "olcPGEX_QuickGUI.h"
 
-#if defined(_MSC_VER)
-#include <ppl.h>
-#endif
+// When the following symbol is defined, the code will also include the usage of TBB when compiling with MSVC
+// TBB must be installed on the PC, and the relevant paths must be set up for include files and libraries
+// Alternatively the Visual Studio extension "Intel Libraries for oneApi Integration" must be installed
+#define USE_TBB_WITH_MSC 1
 
 #include <algorithm>
 #include <execution>
+
+#if defined(_MSC_VER)
+#include <ppl.h>
+#if defined(USE_TBB_WITH_MSC)
+	// Demands installation of OneTBB for Windows/MSVC
+	// Also works with clang in VS, but include and lib paths must be set
+	#include <tbb/tbb.h>
+#endif
+#endif
+
+#if defined(__GNUG__)
+#include "tbb/tbb.h"
+#endif
+
 #include <numeric>
 
 #include <cassert>
@@ -521,7 +536,46 @@ public:
 
 		const int row_size = ScreenWidth();
 
-		concurrency::parallel_for(int(pix_tl.y), int(pix_br.y), [&](int y)
+		concurrency::parallel_for(int(pix_tl.y), int(pix_br.y), [&] (int y)
+								  {
+									  double x_pos = frac_tl.x;
+									  const double y_pos = frac_tl.y + y * y_scale;
+
+									  const int y_offset = y * row_size;
+
+									  int x, n;
+
+									  // We need a copy for each parallel task, possibly down to each y coordinate
+									  std::unique_ptr<IComputePoint> comPoint(m_pCurrentPointAlgorithm->Clone());
+
+									  for (x = pix_tl.x; x < pix_br.x && !stopCalculation; x++)
+									  {
+										  if (julia)
+										  {
+											  n = comPoint->ComputePointCount(juliaSeed.x, juliaSeed.y, x_pos, y_pos);
+										  }
+										  else
+										  {
+											  n = comPoint->ComputePointCount(x_pos, y_pos, z0Value.x, z0Value.y);
+										  }
+
+										  pFractal[y_offset + x] = n;
+										  x_pos += x_scale;
+									  }
+								  });
+	}
+#endif
+
+#if defined(__GNUG__) || defined(USE_TBB_WITH_MSC)
+	// Using oneTBB library parallelization
+	void CreateFractalTbbParallelization(const olc::vi2d& pix_tl, const olc::vi2d& pix_br, const olc::vd2d& frac_tl, const olc::vd2d& frac_br, const int /*iterations*/)
+	{
+		const double x_scale = (frac_br.x - frac_tl.x) / (double(pix_br.x) - double(pix_tl.x));
+		const double y_scale = (frac_br.y - frac_tl.y) / (double(pix_br.y) - double(pix_tl.y));
+
+		const int row_size = ScreenWidth();
+
+		tbb::parallel_for(int(pix_tl.y), int(pix_br.y), [&] (int y)
 			{
 				double x_pos = frac_tl.x;
 				const double y_pos = frac_tl.y + y * y_scale;
@@ -931,6 +985,7 @@ public:
 			m_pCurrentPointAlgorithm->maxIterations = nIterations;
 			m_pCurrentPointAlgorithm->bailOutSquare = bailoutSquared;
 
+			elapsedTime = std::chrono::duration<double>();
 
 			currentHelperThread.reset(new std::thread { &FractalFramework::ThreadFunction, this, pix_tl, pix_br, frac_tl, frac_br, nIterations });
 			
@@ -1123,11 +1178,29 @@ const std::vector<FractalFramework::method_s> FractalFramework::Methods
 #ifdef __clang_version__
 		"parallel_for Method (clang "  __clang_version__ ")"
 #else
-		"parallel_for Method (MSC)"  
+		"parallel_for Method (MSC)"
 #endif
 
 	},
 #endif
+
+#if defined(__GNUG__)  || defined(USE_TBB_WITH_MSC)
+	{
+		olc::Key::K5,
+		&FractalFramework::CreateFractalTbbParallelization,
+	#ifdef __clang_version__
+			"oneTBB parallel_for (clang "  __clang_version__ ")"
+	#else
+		#if defined(_MSC_VER)
+			"oneTBB parallel_for (MSVC)"
+		#else
+			"oneTBB parallel_for (gcc)"
+		#endif
+	#endif
+
+	},
+#endif
+
 };
 
 #define keyData(k) olc::Key::k, #k
