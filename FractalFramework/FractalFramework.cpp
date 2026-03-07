@@ -1014,11 +1014,12 @@ public:
 			effectiveColorizer = &shiftColorizer;
 		}
 
+		int yOffset = 0;
 		for (int y = 0; y < ScreenHeight(); y++)
 		{
 			for (int x = 0; x < ScreenWidth(); x++)
 			{
-				int i = pFractal[y * ScreenWidth() + x];
+				int i = pFractal[yOffset + x];
 				if (i >= nIterations)
 				{
 					if (i == nIterations)
@@ -1033,6 +1034,7 @@ public:
 						effectiveColorizer->ColorizePixel(i));
 				}
 			}
+			yOffset += ScreenWidth();
 		}
 
 		olc::vf2d pos = GetMousePos();
