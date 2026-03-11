@@ -47,6 +47,9 @@
     <ClInclude Include="olcPGEX_QuickGUI.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="IterativeCompute.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="build.sh" />
