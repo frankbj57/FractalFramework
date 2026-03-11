@@ -159,7 +159,7 @@ struct ComputePointWithLoop : public IComputePoint
 				z->Advance();
 				loop++;
 			}
-			return loop;
+			return maxIterations + loop;
 		}
 		else if (n >= maxIterations)
 		{
