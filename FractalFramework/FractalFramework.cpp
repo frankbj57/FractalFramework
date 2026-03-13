@@ -883,21 +883,61 @@ public:
 
 		uint32_t scale = 1;
 		int32_t lineDistance = 10;
+		int32_t lineNo = 0;
 
-		DrawString(0, 0, std::to_string(nMode + 1) + ") " + Methods[nMode].description, olc::WHITE, scale);
+		// Parallelization method
+		DrawString(0, lineNo++ * scale * lineDistance, std::to_string(nMode + 1) + ") " + Methods[nMode].description, olc::WHITE, scale);
 
-		DrawString(0, 1 * scale * lineDistance, "Time Taken: " + std::to_string(elapsedTime.count()) + "s", olc::WHITE, scale);
-		// DrawString(0, 1 * scale * lineDistance, "Time Taken: " + std::to_string(elapseBuffer.meanValue().count()) + "s", olc::WHITE, scale);
-		DrawString(0, 2 * scale * lineDistance, "Iterations: " + std::to_string(m_pCurrentPointAlgorithm->maxIterations), olc::WHITE, scale);
+		// Show compiler
+		DrawString(0, lineNo++ * scale * lineDistance, "Compiler: " + buildCompilerString(), olc::WHITE, scale);
+
+		// Calculation time
+		DrawString(0, lineNo++ * scale * lineDistance, "Time Taken: " + std::to_string(elapsedTime.count()) + "s", olc::WHITE, scale);
+
+		// Current max iteration
+		DrawString(0, lineNo++ * scale * lineDistance, "Iterations: " + std::to_string(m_pCurrentPointAlgorithm->maxIterations), olc::WHITE, scale);
 		
+		// If there is an orbit track, display data
 		if (track.size() > 1)
 		{
-			DrawString(0, 3 * scale * lineDistance, "Track length: " + std::to_string(track.size()), olc::WHITE, scale);
-			DrawString(0, 4 * scale * lineDistance, "Loop length: " + std::to_string(loopLength), olc::WHITE, scale);
+			DrawString(0, lineNo++ * scale * lineDistance, "Track length: " + std::to_string(track.size()), olc::WHITE, scale);
+			DrawString(0, lineNo++ * scale * lineDistance, "Loop length: " + std::to_string(loopLength), olc::WHITE, scale);
 		}
 
 		// Exit program when returning false
 		return !(GetKey(olc::Key::ESCAPE).bPressed);
+	}
+
+	std::string buildCompilerString () const
+	{
+		std::string compiler = "Unknown";
+	#if defined(_MSC_VER)
+		#if defined(__clang_version__)
+			compiler = "Visual Studio clang ("  __clang_version__ ")";
+		#else
+			compiler = "MSVC";
+		#endif
+
+		#if !defined(NDEBUG)
+			compiler += " (debug build)";
+		#endif
+	#elif defined(__GNUG__)
+		#if defined(__MINGW64__)
+			compiler = "MinGW64";
+		#elif defined(__clang_version__)
+			compiler = "clang ("  __clang_version__ ")";
+		#else
+			compiler = "g++";
+		#endif
+	
+		#if !defined(__OPTIMIZE__)
+			compiler += " (debug build)";
+		#endif
+	#elif defined(__clang_version__)
+		compiler = "clang ("  __clang_version__ ")";
+	#endif
+
+		return compiler;
 	}
 
 
@@ -933,12 +973,7 @@ const std::vector<FractalFramework::method_s> FractalFramework::Methods
 	{
 		olc::Key::K4,
 		&FractalFramework::CreateFractalParallelization,
-#ifdef __clang_version__
-		"parallel_for Method (clang "  __clang_version__ ")"
-#else
-		"parallel_for Method (MSC)"
-#endif
-
+		"MS parallel_for"
 	},
 #endif
 
@@ -946,16 +981,7 @@ const std::vector<FractalFramework::method_s> FractalFramework::Methods
 	{
 		olc::Key::K5,
 		&FractalFramework::CreateFractalTbbParallelization,
-	#ifdef __clang_version__
-			"oneTBB parallel_for (clang "  __clang_version__ ")"
-	#else
-		#if defined(_MSC_VER)
-			"oneTBB parallel_for (MSVC)"
-		#else
-			"oneTBB parallel_for (gcc)"
-		#endif
-	#endif
-
+		"oneTBB parallel_for"
 	},
 #endif
 
