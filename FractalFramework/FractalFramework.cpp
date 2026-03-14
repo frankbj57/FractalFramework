@@ -859,17 +859,30 @@ public:
 		{
 			for (size_t i = 0; i < track.size() - 1; i++)
 			{
-				// Warning - it takes a long time to draw a line which is wholly or partially outside the window!
-				// If both points are outside screen, don't draw the line
-				//if (!tv.IsPointVisible(track[i]) && !tv.IsPointVisible(track[i + 1]))
-				//{
-				//	// Don't do anything
-				//}
-				//else
+				// Warning - it can take a long time to draw a line which is wholly or partially outside the window!
 				{
 					tv.DrawLine(track[i], track[i + 1]);
 				}
 			}
+		}
+
+		// Display rectangle at Julia seed
+
+		if (!julia && tv.IsPointVisible(juliaSeed))
+		{
+			// Draw a rectangle 2r pixels across around the julia seed in the current generator set
+			int r = 2;
+			olc::vi2d juliaPixel = tv.WorldToScreen(juliaSeed);
+			DrawRect(juliaPixel - olc::vi2d{ r, r }, { 2 * r, 2 * r });
+		}
+
+		if (tv.IsPointVisible({ 0.0, 0.0 }))
+		{
+			// Draw a cross 2r pixels across around the origin
+			int r = 2;
+			olc::vi2d originPixel = tv.WorldToScreen({ 0.0, 0.0 });
+			DrawLine(originPixel - olc::vi2d{ r, 0 }, originPixel + olc::vi2d{ r, 0 });
+			DrawLine(originPixel - olc::vi2d{ 0, r }, originPixel + olc::vi2d{ 0, r });
 		}
 
 		// Render UI and GUI
@@ -886,7 +899,8 @@ public:
 		int32_t lineNo = 0;
 
 		// Parallelization method
-		DrawString(0, lineNo++ * scale * lineDistance, std::to_string(nMode + 1) + ") " + Methods[nMode].description, olc::WHITE, scale);
+		DrawString(0, lineNo++ * scale * lineDistance, std::to_string(nMode + 1) + ") " + Methods[nMode].description
+				   + (julia ? " -- Julia set" : ""), olc::WHITE, scale);
 
 		// Show compiler
 		DrawString(0, lineNo++ * scale * lineDistance, "Compiler: " + buildCompilerString(), olc::WHITE, scale);
