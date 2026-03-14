@@ -32,6 +32,11 @@ struct IComputePoint
 
 struct MandelComputeState : public IComputeState
 {
+	// Logistic formula for complex numbers
+	// z = z*z + c
+	// Where z0 could be (0.0, 0.0), and c is the current point p
+	// The formula has been optimized for faster computation
+	// For Julia sets, z0 = p and c is the julia seed
 	inline void Advance() override
 	{
 		zi = zr * zi * 2.0 + ci;
@@ -51,6 +56,13 @@ struct MandelComputeState : public IComputeState
 
 struct BurningShipComputeState : public IComputeState
 {
+	// Logistic formula for complex numbers
+	// z = (|zr| + i|zi|)^2 + c in mathematical short hand,
+	// | | meaning the absolute value of the real and imaginary part of z respectively
+	// Where z0 could be (0.0, 0.0), and c is the current point p
+	// The formula has been optimized for faster computation
+	// For Julia sets, z0 = p and c is the julia seed
+
 	inline void Advance() override
 	{
 		zi = std::abs(zr * zi) * 2.0 + ci;
@@ -70,6 +82,11 @@ struct BurningShipComputeState : public IComputeState
 
 struct LogisticComputeState : public IComputeState
 {
+	// Logistic formula for complex numbers
+	// z = c*z*(1-z)
+	// Where z0 could be (0.5, 0.0), and c is the current point p
+	// The formula has been optimized for faster computation
+	// For Julia sets, z0 = p and c is the julia seed
 	inline void Advance() override
 	{
 		double fr = (zr - zr2 + zi2);

@@ -192,7 +192,6 @@ public:
 		currentColorizer = 0;
 
 		Colorizers.push_back(colorizer_s{ "Optimized Eriksson", &oeColorizer });
-		Colorizers.push_back(colorizer_s{ "Eriksson", &eColorizer });
 		Colorizers.push_back(colorizer_s{ "Color Up", &colorUpColorizer });
 
 		basicColorizer = Colorizers[currentColorizer].pColorizer;
