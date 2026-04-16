@@ -263,3 +263,64 @@ struct ComputePointWithConvergence : public IComputePoint
 	}
 };
 
+struct ComputePointWithIndex : public IComputePoint
+{
+	inline int ComputePointCount(double x, double y, double initr = 0.0, double initi = 0.0) override
+	{
+		int n = 0;
+		int index = 0;
+		double distance2 = 2*bailOutSquare ;
+
+		z->Initialize(x, y, initr, initi);
+
+		std::unique_ptr<IComputeState> ztail(z->Clone());
+
+		bool loops = false;
+		while ((z->zr2 + z->zi2) < bailOutSquare && n < maxIterations && !loops)
+		{
+			z->Advance();
+			if (n & 0x1)
+				ztail->Advance();
+			// loops = z->zr == ztail->zr && z->zi == ztail->zi;
+			loops = std::abs(z->zr - ztail->zr) < loopEpsilon && std::abs(z->zi - ztail->zi) < loopEpsilon;
+			n++;
+			if (n > 1)
+			{
+				// Distance from z0
+				double newdistance2 = (z->zr - x) * (z->zr - x) + (z->zi - y)*(z->zi - y);
+				if (newdistance2 < distance2)
+				{
+					index = n - 1;
+					distance2 = newdistance2;
+				}
+			}
+		}
+
+		if (loops || n >= maxIterations)
+		{
+			// It's an inside point
+			return maxIterations + index;
+		}
+		else
+		{
+			return n;
+		}
+	}
+
+	inline IComputePoint* Clone() override
+	{
+		ComputePointWithIndex* pR = new ComputePointWithIndex();
+
+		assert(z);
+
+		pR->z.reset(z->Clone());
+		pR->maxIterations = maxIterations;
+		pR->bailOutSquare = bailOutSquare;
+
+		return pR;
+	}
+
+	~ComputePointWithIndex() override
+	{ }
+};
+

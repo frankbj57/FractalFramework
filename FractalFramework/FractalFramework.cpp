@@ -137,6 +137,8 @@ public:
 
 	bool calculateConvergence = false;
 
+	bool calculateIndex = false;
+
 	bool recalculate = true;
 
 	std::unique_ptr<IComputeState> m_pCurrentStateAlgorithm;
@@ -506,8 +508,20 @@ public:
 
 	bool ToggleLoopDetection(olc::Key)
 	{
-		// Toggle loopcheck
-		loopCheck = !loopCheck;
+		if (GetKey(olc::Key::SHIFT).bPressed || GetKey(olc::Key::SHIFT).bHeld)
+		{
+			// Toggle index calculation
+			calculateIndex = !calculateIndex;
+			if (calculateIndex)
+				loopCheck = false;
+		}
+		else
+		{
+			// Toggle loopcheck
+			loopCheck = !loopCheck;
+			if (loopCheck)
+				calculateIndex = false;
+		}
 
 		recalculate |= true;
 
@@ -516,7 +530,7 @@ public:
 
 	bool ToggleInsideConvergence(olc::Key)
 	{
-		// Toggle loopcheck
+		// Toggle convergence calculation
 		calculateConvergence = !calculateConvergence;
 
 		recalculate |= true;
@@ -728,11 +742,11 @@ public:
 			stopCalculation = false;
 			calculationCompleted = false;
 			if (calculateConvergence)
-			{
 				m_pCurrentPointAlgorithm.reset(new ComputePointWithConvergence);
-			}
 			else if (loopCheck)
 				m_pCurrentPointAlgorithm.reset(new ComputePointWithLoop);
+			else if (calculateIndex)
+				m_pCurrentPointAlgorithm.reset(new ComputePointWithIndex);
 			else
 				m_pCurrentPointAlgorithm.reset(new ComputePoint);
 
@@ -1012,7 +1026,7 @@ const std::vector<FractalFramework::key_command_s> FractalFramework::KeyCommands
 	},
 	{
 		keyData(L),
-		"Toggle loop detection",
+		"Toggle loop detection (SHIFT for index calculation)",
 		&FractalFramework::ToggleLoopDetection
 	},
 	{
