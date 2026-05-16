@@ -10,23 +10,21 @@ class OptimizedErikssonColorizer : public Colorizer
 public:
 	OptimizedErikssonColorizer()
 	{
-		setScale(256.0);
 	}
 
-	olc::Pixel ColorizePixel(int value) const override
+	olc::Pixel ColorizePixelScaled(double value) const override
 	{
-		return ColorizePixel((float)value);
+		return ColorizePixelNormalized(value / getScale());
 	}
 
-	olc::Pixel ColorizePixel(float value) const override
+	olc::Pixel ColorizePixelNormalized(double value) const override
 	{
 		// Thank you @Eriksonn - Wonderful Magic Fractal Oddball Man
 
 		// Optimized with trigonometric formulas from originally using 3 calls to sine
 		// to use one call, a sqrt call and some simple math
 
-		float scaledAngle = value / getScale();
-		scaledAngle = scaledAngle - static_cast<int>(scaledAngle);
+		float scaledAngle = value - static_cast<int>(value);
 		if (scaledAngle < 0)
 			scaledAngle += 1;
 		scaledAngle *= 2 * pi;

@@ -10,18 +10,17 @@ class ErikssonColorizer : public Colorizer
 public:
 	ErikssonColorizer()
 	{
-		setScale(256.0);
 	}
 
-	olc::Pixel ColorizePixel(int value) const override
+	olc::Pixel ColorizePixelScaled(double value) const override
 	{
-		return ColorizePixel((float)value);
+		return ColorizePixelNormalized(value/getScale());
 	}
 
-	olc::Pixel ColorizePixel(float value) const override
+	olc::Pixel ColorizePixelNormalized(double value) const override
 	{
 		// Thank you @Eriksonn - Wonderful Magic Fractal Oddball Man
-		float scaledAngle = 2 * pi * value / getScale();
+		float scaledAngle = (float) (2 * pi * value);
 
 		return olc::PixelF(0.5f * std::sin(scaledAngle) + 0.5f, 0.5f * sin(scaledAngle + 2*pithird) + 0.5f, 0.5f * sin(scaledAngle + 4*pithird) + 0.5f);
 	}

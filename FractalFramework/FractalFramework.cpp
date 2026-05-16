@@ -764,12 +764,6 @@ public:
 		// Render result to screen
 		// effectiveColorizer->scale = nIterations;
 		IColorizer * effectiveColorizer = basicColorizer;
-		if (striped)
-		{
-			stripedColorizer.setCore(effectiveColorizer);
-			effectiveColorizer = &stripedColorizer;
-		}
-
 		if (shifting)
 		{
 			shiftTime += fElapsedTime;
@@ -779,8 +773,12 @@ public:
 				shiftTime = fmodf(shiftTime, (1.0f / shiftSpeed));
 			}
 
-			shiftColorizer.setCore(effectiveColorizer);
-			effectiveColorizer = &shiftColorizer;
+			effectiveColorizer = & (shiftColorizer | *effectiveColorizer);
+		}
+
+		if (striped)
+		{
+			effectiveColorizer = &(stripedColorizer | *effectiveColorizer);
 		}
 
 		int yOffset = 0;
@@ -795,12 +793,12 @@ public:
 						Draw(x, y, olc::BLACK);
 					else
 						Draw(x, y,
-							 effectiveColorizer->ColorizePixel(i-nIterations));
+							 effectiveColorizer->ColorizePixelScaled(i-nIterations));
 				}
 				else
 				{
 					Draw(x, y,
-						effectiveColorizer->ColorizePixel(i));
+						effectiveColorizer->ColorizePixelScaled(i));
 				}
 			}
 			yOffset += ScreenWidth();

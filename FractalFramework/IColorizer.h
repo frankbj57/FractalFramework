@@ -5,10 +5,10 @@
 class IColorizer
 {
 public:
-	virtual olc::Pixel ColorizePixel(int value) const = 0;
-	virtual olc::Pixel ColorizePixel(float value) const = 0;
-	virtual void setScale(float scale) = 0;
-	virtual float getScale() const = 0;
+	virtual olc::Pixel ColorizePixelScaled(double value) const = 0;
+	virtual olc::Pixel ColorizePixelNormalized(double value) const = 0;
+	virtual void setScale(double scale) = 0;
+	virtual double getScale() const = 0;
 
 private:
 
@@ -18,11 +18,11 @@ private:
 class Colorizer : public IColorizer
 {
 public:
-	virtual void setScale(float scale_) { this->scale = scale_; }
-	virtual float getScale() const { return scale; }
+	virtual void setScale(double scale_) { this->scale = scale_; }
+	virtual double getScale() const { return scale; }
 
 protected:
-	float scale = 256;
+	double scale = 255;
 };
 
 // Declare an interface for colorizer decorators
@@ -41,11 +41,11 @@ class ColorizerDecorator : public IColorizerDecorator
 public:
 	ColorizerDecorator(IColorizer* pCore) : pCore(pCore) {}
 
-	virtual olc::Pixel ColorizePixel(int value) const override { return pCore->ColorizePixel(value); }
-	virtual olc::Pixel ColorizePixel(float value) const override { return pCore->ColorizePixel(value); }
+	virtual olc::Pixel ColorizePixelScaled(double value) const override { return pCore->ColorizePixelScaled(value); }
+	virtual olc::Pixel ColorizePixelNormalized(double value) const override { return pCore->ColorizePixelNormalized(value); }
 
-	void setScale(float scale) override { pCore->setScale(scale); }
-	float getScale() const override { return pCore->getScale(); }
+	void setScale(double scale) override { pCore->setScale(scale); }
+	double getScale() const override { return pCore->getScale(); }
 
 	virtual IColorizer* getCore() const override { return pCore; }
 	virtual void setCore(IColorizer* pCore_) override { this->pCore = pCore_; }
@@ -53,3 +53,9 @@ public:
 protected:
 	IColorizer* pCore;
 };
+
+IColorizer & operator|(IColorizerDecorator &left, IColorizer &right)
+{
+	left.setCore(&right);
+	return left;
+}
