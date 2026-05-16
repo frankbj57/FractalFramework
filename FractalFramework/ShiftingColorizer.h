@@ -4,26 +4,24 @@
 
 struct ShiftingColorizer : public ColorizerDecorator
 {
-	int shift;
-	void setShift(int shift_)
+	double shift;
+	void setShift(double shift_)
 	{
-		float mod = fmodf((float) shift_, pCore->getScale());
-		shift = (int) mod;
+		shift = shift_;
 	}
 
-	int getShift() const
+	double getShift() const
 	{
 		return shift;
 	}
 
 	ShiftingColorizer(IColorizer* pCore) : ColorizerDecorator(pCore), shift(0) {}
 
-	olc::Pixel ColorizePixel(int value) const override
+	olc::Pixel ColorizePixelScaled(double value) const override
 	{
-		int effValue = value + shift;
-		effValue = (int) fmodf((float) effValue, pCore->getScale());
+		double effValue = value + shift;
 
-		return pCore->ColorizePixel(effValue);
+		return pCore->ColorizePixelScaled(effValue);
 	}
 
 
