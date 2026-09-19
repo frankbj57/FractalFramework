@@ -1,9 +1,11 @@
-Get output text from PgeMandelbrotParallel
+Get output text from PgeMandelbrotParallel - OK, computerstring
 
 Do experiments with internal coloring (inside the black)
 	https://www.sekinoworld.com/fractal/coloring.htm
 
 Streamlining colorizers and decorators for them
+
+Conditional rendering - using layers because of GUI
 
 Parallelize rendering
 

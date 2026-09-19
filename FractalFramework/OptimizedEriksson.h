@@ -25,14 +25,14 @@ public:
 		// Optimized with trigonometric formulas from originally using 3 calls to sine
 		// to use one call, a sqrt call and some simple math
 
-		float scaledAngle = value / getScale();
-		scaledAngle = scaledAngle - static_cast<int>(scaledAngle);
-		if (scaledAngle < 0)
-			scaledAngle += 1;
-		scaledAngle *= 2 * pi;
+		float unscaledAngle = value / getScale();
+		unscaledAngle = unscaledAngle - static_cast<int>(unscaledAngle);
+		if (unscaledAngle < 0)
+			unscaledAngle += 1;
+		auto scaledAngle = unscaledAngle * 2 * pi;
 		float sinx = std::sin(scaledAngle);
 		float cosx = std::sqrt(1 - sinx * sinx);
-		if (scaledAngle > pi / 2 && scaledAngle < 3 * pi / 2)
+		if (unscaledAngle > 0.5 && scaledAngle < 1.5)
 			cosx = -cosx;
 
 		float red = sinx;

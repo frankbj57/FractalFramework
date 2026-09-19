@@ -113,7 +113,8 @@ public:
 	FractalFramework() 
 		: 
 		stripedColorizer(&eColorizer),
-		shiftColorizer(&eColorizer)
+		shiftColorizer(&eColorizer),
+		compilerString(buildCompilerString())
 	{
 		sAppName = "Fractal Framework";
 	}
@@ -151,6 +152,7 @@ public:
 	olc::QuickGUI::Slider* guiIterationSlider = nullptr;
 	olc::QuickGUI::Label* guiIterationValue = nullptr;
 
+	const std::string compilerString;
 
 public:
 	bool ResetView(olc::Key)
@@ -916,7 +918,7 @@ public:
 				   + (julia ? " -- Julia set" : ""), olc::WHITE, scale);
 
 		// Show compiler
-		DrawString(0, lineNo++ * scale * lineDistance, "Compiler: " + buildCompilerString(), olc::WHITE, scale);
+		DrawString(0, lineNo++ * scale * lineDistance, "Compiler: " + compilerString, olc::WHITE, scale);
 
 		// Calculation time
 		DrawString(0, lineNo++ * scale * lineDistance, "Time Taken: " + std::to_string(elapsedTime.count()) + "s", olc::WHITE, scale);
