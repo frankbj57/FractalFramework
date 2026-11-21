@@ -19,6 +19,17 @@ struct IComputeState
 	virtual ~IComputeState() { }
 };
 
+template <class DERIVED>
+struct TComputeStateBasis : IComputeState
+{
+	inline IComputeState* Clone() override
+	{
+		DERIVED* pR = new DERIVED( ( const DERIVED &) (*this));
+
+		return pR;
+	}
+};
+
 struct IComputePoint
 {
 	std::unique_ptr<IComputeState> z;
@@ -30,7 +41,24 @@ struct IComputePoint
 	virtual ~IComputePoint() { }
 };
 
-struct MandelComputeState : public IComputeState
+template <class DERIVED>
+struct TComputePointBasis : IComputePoint
+{
+	inline IComputePoint* Clone() override
+	{
+		DERIVED* pR = new DERIVED;
+
+		assert(z);
+
+		pR->z.reset(z->Clone());
+		pR->maxIterations = maxIterations;
+		pR->bailOutSquare = bailOutSquare;
+
+		return pR;
+	}
+};
+
+struct MandelComputeState : public TComputeStateBasis<MandelComputeState>
 {
 	// Logistic formula for complex numbers
 	// z = z*z + c
@@ -45,16 +73,9 @@ struct MandelComputeState : public IComputeState
 		zr2 = zr * zr;
 		zi2 = zi * zi;
 	}
-
-	inline IComputeState* Clone() override
-	{
-		MandelComputeState* pR = new MandelComputeState(*this);
-
-		return pR;
-	}
 };
 
-struct BurningShipComputeState : public IComputeState
+struct BurningShipComputeState : public TComputeStateBasis<BurningShipComputeState>
 {
 	// Logistic formula for complex numbers
 	// z = (|zr| + i|zi|)^2 + c in mathematical short hand,
@@ -71,16 +92,9 @@ struct BurningShipComputeState : public IComputeState
 		zr2 = zr * zr;
 		zi2 = zi * zi;
 	}
-
-	inline IComputeState* Clone() override
-	{
-		BurningShipComputeState* pR = new BurningShipComputeState(*this);
-
-		return pR;
-	}
 };
 
-struct LogisticComputeState : public IComputeState
+struct LogisticComputeState : public TComputeStateBasis<LogisticComputeState>
 {
 	// Logistic formula for complex numbers
 	// z = c*z*(1-z)
@@ -98,16 +112,9 @@ struct LogisticComputeState : public IComputeState
 		zr2 = zr * zr;
 		zi2 = zi * zi;
 	}
-
-	inline IComputeState* Clone() override
-	{
-		LogisticComputeState* pR = new LogisticComputeState(*this);
-
-		return pR;
-	}
 };
 
-struct ComputePoint : public IComputePoint
+struct ComputePoint : public TComputePointBasis<ComputePoint>
 {
 	inline int ComputePointCount(double x, double y, double initr = 0.0, double initi = 0.0) override
 	{
@@ -124,25 +131,12 @@ struct ComputePoint : public IComputePoint
 		return n;
 	}
 
-	inline IComputePoint* Clone() override
-	{
-		ComputePoint* pR = new ComputePoint;
-
-		assert(z);
-
-		pR->z.reset(z->Clone());
-		pR->maxIterations = maxIterations;
-		pR->bailOutSquare = bailOutSquare;
-
-		return pR;
-	}
-
 	~ComputePoint() override
 	{
 	}
 };
 
-struct ComputePointWithLoop : public IComputePoint
+struct ComputePointWithLoop : public TComputePointBasis<ComputePointWithLoop>
 {
 	inline int ComputePointCount(double x, double y, double initr = 0.0, double initi = 0.0) override
 	{
@@ -188,24 +182,11 @@ struct ComputePointWithLoop : public IComputePoint
 		}
 	}
 
-	inline IComputePoint* Clone() override
-	{
-		ComputePointWithLoop* pR = new ComputePointWithLoop;
-
-		assert(z);
-
-		pR->z.reset(z->Clone());
-		pR->maxIterations = maxIterations;
-		pR->bailOutSquare = bailOutSquare;
-
-		return pR;
-	}
-
 	~ComputePointWithLoop() override
 	{ }
 };
 
-struct ComputePointWithLyaponov : public IComputePoint
+struct ComputePointWithLyaponov : public TComputePointBasis<ComputePointWithLyaponov>
 {
 	inline int ComputePointCount(double x, double y, double initr = 0.0, double initi = 0.0) override
 	{
@@ -258,25 +239,11 @@ struct ComputePointWithLyaponov : public IComputePoint
 		}
 	}
 
-	inline IComputePoint* Clone() override
-	{
-		ComputePointWithLyaponov* pR = new ComputePointWithLyaponov;
-
-		assert(z);
-
-		pR->z.reset(z->Clone());
-		pR->maxIterations = maxIterations;
-		pR->bailOutSquare = bailOutSquare;
-
-		return pR;
-	}
-
-	~ComputePointWithLyaponov() override
-	{ }
+	~ComputePointWithLyaponov() override { }
 };
 
 
-struct ComputePointWithConvergence : public IComputePoint
+struct ComputePointWithConvergence : public TComputePointBasis<ComputePointWithConvergence>
 {
 	inline int ComputePointCount(double x, double y, double initr = 0.0, double initi = 0.0) override
 	{
@@ -314,25 +281,12 @@ struct ComputePointWithConvergence : public IComputePoint
 		}
 	}
 
-	inline IComputePoint* Clone() override
-	{
-		ComputePointWithConvergence* pR = new ComputePointWithConvergence();
-
-		assert(z);
-
-		pR->z.reset(z->Clone());
-		pR->maxIterations = maxIterations;
-		pR->bailOutSquare = bailOutSquare;
-
-		return pR;
-	}
-
 	~ComputePointWithConvergence() override
 	{
 	}
 };
 
-struct ComputePointWithIndex : public IComputePoint
+struct ComputePointWithIndex : public TComputePointBasis<ComputePointWithIndex>
 {
 	inline int ComputePointCount(double x, double y, double initr = 0.0, double initi = 0.0) override
 	{
@@ -374,19 +328,6 @@ struct ComputePointWithIndex : public IComputePoint
 		{
 			return n;
 		}
-	}
-
-	inline IComputePoint* Clone() override
-	{
-		ComputePointWithIndex* pR = new ComputePointWithIndex();
-
-		assert(z);
-
-		pR->z.reset(z->Clone());
-		pR->maxIterations = maxIterations;
-		pR->bailOutSquare = bailOutSquare;
-
-		return pR;
 	}
 
 	~ComputePointWithIndex() override
