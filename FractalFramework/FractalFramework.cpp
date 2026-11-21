@@ -140,6 +140,8 @@ public:
 
 	bool calculateIndex = false;
 
+	bool calculateLyaponov = false;
+
 	bool recalculate = true;
 
 	std::unique_ptr<IComputeState> m_pCurrentStateAlgorithm;
@@ -540,6 +542,16 @@ public:
 		return true;
 	}
 
+	bool ToggleLyaponov(olc::Key)
+	{
+		// Toggle convergence calculation
+		calculateLyaponov = !calculateLyaponov;
+
+		recalculate |= true;
+
+		return true;
+	}
+
 	bool ToggleAnimateColors(olc::Key)
 	{
 		// Toggle shifting of colors
@@ -749,6 +761,8 @@ public:
 				m_pCurrentPointAlgorithm.reset(new ComputePointWithLoop);
 			else if (calculateIndex)
 				m_pCurrentPointAlgorithm.reset(new ComputePointWithIndex);
+			else if (calculateLyaponov)
+				m_pCurrentPointAlgorithm.reset(new ComputePointWithLyaponov);
 			else
 				m_pCurrentPointAlgorithm.reset(new ComputePoint);
 
@@ -795,6 +809,15 @@ public:
 				{
 					if (i == nIterations)
 						Draw(x, y, olc::BLACK);
+					else if (calculateLyaponov)
+					{
+						int lya = i - nIterations-32000;
+						//if (lya <= 0)
+						//	Draw(x, y, olc::RED);
+						//else
+						//	Draw(x, y, olc::BLUE);
+						Draw(x, y, effectiveColorizer->ColorizePixel(lya));
+					}
 					else
 						Draw(x, y,
 							 effectiveColorizer->ColorizePixel(i-nIterations));
@@ -1035,6 +1058,11 @@ const std::vector<FractalFramework::key_command_s> FractalFramework::KeyCommands
 		keyData(I),
 		"Calculate internal convergence",
 		&FractalFramework::ToggleInsideConvergence
+	},
+	{
+		keyData(Y),
+		"Calculate lyaponov coefficietn",
+		&FractalFramework::ToggleLyaponov
 	},
 	{
 		keyData(UP),

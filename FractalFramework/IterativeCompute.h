@@ -202,8 +202,77 @@ struct ComputePointWithLoop : public IComputePoint
 	}
 
 	~ComputePointWithLoop() override
+	{ }
+};
+
+struct ComputePointWithLyaponov : public IComputePoint
+{
+	inline int ComputePointCount(double x, double y, double initr = 0.0, double initi = 0.0) override
 	{
+		int n = 0;
+
+		z->Initialize(x, y, initr, initi);
+
+		std::unique_ptr<IComputeState> ztail(z->Clone());
+
+		bool loops = false;
+		while ((z->zr2 + z->zi2) < bailOutSquare && n < maxIterations && !loops)
+		{
+			z->Advance();
+			if (n & 0x1)
+				ztail->Advance();
+			// loops = z->zr == ztail->zr && z->zi == ztail->zi;
+			loops = std::abs(z->zr - ztail->zr) < loopEpsilon && std::abs(z->zi - ztail->zi) < loopEpsilon;
+			n++;
+		}
+
+		if (loops)
+		{
+			// We are looping, calculate loop length
+			*ztail = *z;
+			int loop = 0;
+			double sumLogs = 0;
+			do
+			{
+				sumLogs += std::log2(z->zi2 + z->zr2);
+				z->Advance();
+				loop++;
+			    // When zooming very deep, calculations are not exact, so check again for maximum iterations
+			} while (!(std::abs(z->zr - ztail->zr) < loopEpsilon && std::abs(z->zi - ztail->zi) < loopEpsilon) && loop < maxIterations);
+
+			sumLogs /= 2;  //Taking the squarerot
+			sumLogs /= loop;
+			sumLogs += log2(2.0);
+			
+			sumLogs *= 100;
+
+			return maxIterations + (int) sumLogs + 32000;
+		}
+		else if (n >= maxIterations)
+		{
+			return maxIterations;
+		}
+		else
+		{
+			return n;
+		}
 	}
+
+	inline IComputePoint* Clone() override
+	{
+		ComputePointWithLyaponov* pR = new ComputePointWithLyaponov;
+
+		assert(z);
+
+		pR->z.reset(z->Clone());
+		pR->maxIterations = maxIterations;
+		pR->bailOutSquare = bailOutSquare;
+
+		return pR;
+	}
+
+	~ComputePointWithLyaponov() override
+	{ }
 };
 
 
