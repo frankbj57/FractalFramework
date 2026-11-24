@@ -812,11 +812,13 @@ public:
 					else if (calculateLyaponov)
 					{
 						int lya = i - nIterations-32000;
-						//if (lya <= 0)
-						//	Draw(x, y, olc::RED);
-						//else
-						//	Draw(x, y, olc::BLUE);
-						Draw(x, y, effectiveColorizer->ColorizePixel(lya));
+						if (lya < 0)
+							Draw(x, y, olc::BLUE);
+						else if (lya == 0)
+							Draw(x, y, olc::BLACK);
+						else
+							Draw(x, y, olc::RED);
+						// Draw(x, y, effectiveColorizer->ColorizePixel(lya));
 					}
 					else
 						Draw(x, y,

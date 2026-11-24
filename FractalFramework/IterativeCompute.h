@@ -197,9 +197,11 @@ struct ComputePointWithLyaponov : public TComputePointBasis<ComputePointWithLyap
 		std::unique_ptr<IComputeState> ztail(z->Clone());
 
 		bool loops = false;
+		double sumLogs = 0;
 		while ((z->zr2 + z->zi2) < bailOutSquare && n < maxIterations && !loops)
 		{
 			z->Advance();
+			sumLogs += std::log2(z->zi2 + z->zr2);
 			if (n & 0x1)
 				ztail->Advance();
 			// loops = z->zr == ztail->zr && z->zi == ztail->zi;
@@ -212,7 +214,7 @@ struct ComputePointWithLyaponov : public TComputePointBasis<ComputePointWithLyap
 			// We are looping, calculate loop length
 			*ztail = *z;
 			int loop = 0;
-			double sumLogs = 0;
+			sumLogs = 0;
 			do
 			{
 				sumLogs += std::log2(z->zi2 + z->zr2);
@@ -225,13 +227,19 @@ struct ComputePointWithLyaponov : public TComputePointBasis<ComputePointWithLyap
 			sumLogs /= loop;
 			sumLogs += log2(2.0);
 			
-			sumLogs *= 100;
+			sumLogs *= 1000;
 
 			return maxIterations + (int) sumLogs + 32000;
 		}
 		else if (n >= maxIterations)
 		{
-			return maxIterations;
+			sumLogs /= 2;  //Taking the squarerot
+			sumLogs /= n;
+			sumLogs += log2(2.0);
+
+			sumLogs *= 1000;
+
+			return maxIterations + (int) sumLogs + 32000;
 		}
 		else
 		{
